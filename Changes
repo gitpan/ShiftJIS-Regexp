@@ -1,5 +1,14 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.19  Thu Nov 22 23:34:38 2001
+    - add \p{Xdigit}, \p{Roman}, etc.
+
+0.18  Thu Nov 22 00:01:12 2001
+    - jsplit() etc. of an empty string should return an empty list.
+    - add \p{JIS}, \p{NEC}, \p{IBM}, \p{MSWin}, etc.
+    - add \pP, \PP, etc.
+    - now Prop in \p{Prop} and class in [:class:] are case-insensitive.
+
 0.17  Sun Sep 16 00:59:12 2001
     - internal: match and replace.
 

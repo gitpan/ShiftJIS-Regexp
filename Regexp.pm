@@ -4,7 +4,7 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.17';
+$VERSION = '0.19';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 require Exporter;
@@ -14,26 +14,30 @@ use ShiftJIS::Regexp::Equiv qw(%Eq);
 
 @ISA = qw(Exporter);
 
-my @Re    = qw(re  mkclass  rechar);
-my @Split = qw(jsplit splitchar splitspace);
-my @Op    = qw(match replace);
-
 %EXPORT_TAGS = (
-    "re"    => \@Re,
-    "op"    => \@Op,
-    "split" => \@Split,
-    "all"   => [@Re, @Op, @Split],
+    're'    => [qw(re mkclass rechar)],
+    'op'    => [qw(match replace)],
+    'split' => [qw(jsplit splitchar splitspace)],
 );
+$EXPORT_TAGS{all} = [ map @$_, values %EXPORT_TAGS ];
 @EXPORT_OK   = @{ $EXPORT_TAGS{all} };
 @EXPORT      = ();
 
-my $Msg_unm = $PACKAGE.' Unmatched [ character class';
-my $Msg_ilb = $PACKAGE.' Illegal byte in class (following [)';
-my $Msg_odd = $PACKAGE.' \\x%02x is not followed by trail byte';
-my $Msg_und = $PACKAGE.' %s not defined';
-my $Msg_rev = $PACKAGE.' Invalid [] range (reverse) %d > %d';
-my $Msg_bsl = $PACKAGE.' Trailing \ in regexp';
-my $Msg_cod = $PACKAGE.' Sequence (?{...}) not terminated or not {}-balanced';
+my $ErrCode = $PACKAGE.' Sequence (?{...}) not terminated or not {}-balanced';
+my $ErrUndef    = $PACKAGE.' "%s" is not defined';
+my $ErrUnTermin = $PACKAGE.' %s is not terminated ("%s" missing)';
+my $ErrNotASCII = $PACKAGE.' "%s" is not followed by an ASCII, [\x21-\x7e]';
+my $ErrNotAlnum = $PACKAGE.' "%s" is not followed by an Alnum, [0-9A-Za-z]';
+my $ErrBackTips = $PACKAGE.' Trailing \ in regexp';
+my $ErrOddTrail = $PACKAGE.' "\\x%02x" is not followed by trail byte';
+
+my $ErrReverse  = $PACKAGE.' Invalid [] range (reverse) %d > %d';
+my $ErrInvalRng = $PACKAGE.' Invalid [] range "%s"';
+my $ErrInvalMch = $PACKAGE.' Invalid Metacharacter "%s"';
+my $ErrInvalHex = $PACKAGE.' Invalid Hexadecimal %s following "\x"';
+my $ErrInvalFlw = $PACKAGE.' Invalid byte "\\x%02x" following "%s" (only "%s" allowed)';
+
+
 
 my $SBC = '[\x00-\x7F\xA1-\xDF]';
 my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
@@ -45,13 +49,8 @@ my $Gpad  = '(?:\G|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
 my $GApad = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?|'
           . '[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
 
-#my $Apad = '(?:\A|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
-#my $Gpad = '(?:\G|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
-#my $GApad = '(?:\G\A|'
-#  . '\G(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')+?|'
-#  . '[\x00-\x3F\x7F]+?(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?)';
-
 my $Open = 5.005 > $] ? '(?:' : '(?-i:';
+my $Close = ')';
 
 my %Re = (
   '\C' => '[\x00-\xFF]',
@@ -63,181 +62,513 @@ my %Re = (
   '\W' => '(?:[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.')',
   '\s' => '[\x09\x0A\x0C\x0D\x20]',
   '\S' => '(?:[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|' . $DBC . ')',
-  '\p{IsDigit}' => $Open.'[\x30-\x39]|\x82[\x4F-\x58])',
-  '\P{IsDigit}' => $Open.'[\x00-\x2F\x3A-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC]'
-		. '[\x40-\x7E\x80-\xFC]|\x82[\x40-\x4E\x59-\x7E\x80-\xFC])',
-  '\p{IsUpper}' => $Open.'[\x41-\x5A]|\x82[\x60-\x79])',
-  '\P{IsUpper}' => $Open.'[\x00-\x40\x5B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x5F\x7A-\x7E\x80-\xFC])',
-  '\p{IsLower}' => $Open.'[\x61-\x7A]|\x82[\x81-\x9A])',
-  '\P{IsLower}' => $Open.'[\x00-\x60\x7B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x7E\x80\x9B-\xFC])',
-  '\p{IsAlpha}' => $Open.'[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A])',
-  '\P{IsAlpha}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{IsAlnum}' => $Open.'[0-9A-Za-z]|\x82[\x4F-\x58\x60-\x79\x81-\x9A])',
 
-  '\P{IsAlnum}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+  '\p{xdigit}' => '[0-9A-Fa-f]',
+  '\P{xdigit}' => $Open.'[\x00-\x2F\x3A-\x40\x47-\x60\x67-\x7F\xA1-\xDF]|'
+		. $DBC .$Close,
+
+  '\p{digit}' => $Open.'[\x30-\x39]|\x82[\x4F-\x58]'.$Close,
+  '\P{digit}' => $Open.'[\x00-\x2F\x3A-\x7F\xA1-\xDF]|'
+		. '[\x81\x83-\x9F\xE0-\xFC]'
+		. '[\x40-\x7E\x80-\xFC]|\x82[\x40-\x4E\x59-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{upper}' => $Open.'[\x41-\x5A]|\x82[\x60-\x79]'.$Close,
+  '\P{upper}' => $Open.'[\x00-\x40\x5B-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{IsSpace}' => $Open.'[\x09\x0A\x0C\x0D\x20]|\x81\x40)',
-  '\P{IsSpace}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|'
+		. '\x82[\x40-\x5F\x7A-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{lower}' => $Open.'[\x61-\x7A]|\x82[\x81-\x9A]'.$Close,
+  '\P{lower}' => $Open.'[\x00-\x60\x7B-\x7F\xA1-\xDF]|'
+		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x82[\x40-\x7E\x80\x9B-\xFC]'
+		. $Close,
+
+  '\p{alpha}' => $Open.'[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A]'.$Close,
+  '\P{alpha}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC]'
+		. $Close,
+
+  '\p{alnum}' => $Open.'[0-9A-Za-z]|\x82[\x4F-\x58\x60-\x79\x81-\x9A]'.$Close,
+  '\P{alnum}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC]'
+		. $Close,
+
+  '\p{space}' => $Open.'[\x09\x0A\x0C\x0D\x20]|\x81\x40'.$Close,
+  '\P{space}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|'
 		. '\x81[\x41-\x7E\x80-\xFC]|'
-		. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{IsPunct}' => $Open.'[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]|'
+		. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{punct}' => $Open.'[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]|'
 		. '\x81[\x41-\x49\x4C-\x51\x5C-\x7E\x80-\xAC\xB8-\xBF'
-		. '\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|\x84[\x9F-\xBE])',
-  '\P{IsPunct}' => $Open.'[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]|'
+		. '\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|\x84[\x9F-\xBE]'
+		. $Close,
+  '\P{punct}' => $Open.'[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]|'
 		. '\x81[\x40\x4A\x4B\x52-\x5B\xAD-\xB7\xC0-\xC7\xCF-\xD9'
 		. '\xE9-\xEF\xF8-\xFB]|\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]|'
-		. '[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{IsGraph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]|'
-			. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\P{IsGraph}' => $Open.'[\x00-\x20\x7F]|\x81\x40)',
-  '\p{IsPrint}' => $Open.'[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' . $DBC . ')',
-  '\P{IsPrint}' => '[\x00-\x08\x0B\x0E-\x1F\x7F]',
-  '\p{IsCntrl}' => '[\x00-\x1F]',
-  '\P{IsCntrl}' => $Open.'[\x20-\x7F\xA1-\xDF]|' . $DBC . ')',
-  '\p{IsAscii}' => '[\x00-\x7F]',
-  '\P{IsAscii}' => $Open.'[\xA1-\xDF]|' . $DBC . ')',
+		. '[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. $Close,
 
-  '\p{IsWord}'   => $Open.'[0-9A-Z_a-z\xA6-\xDF]|\x81[\x4A\x4B\x52-\x5B]|'
+  '\p{graph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]|'
+			. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'.$Close,
+  '\P{graph}' => $Open.'[\x00-\x20\x7F]|\x81\x40'.$Close,
+
+  '\p{print}' => $Open.'[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' .$DBC.$Close,
+  '\P{print}' => '[\x00-\x08\x0B\x0E-\x1F\x7F]',
+
+  '\p{cntrl}' => '[\x00-\x1F]',
+  '\P{cntrl}' => $Open.'[\x20-\x7F\xA1-\xDF]|' .$DBC.$Close,
+
+  '\p{ascii}' => '[\x00-\x7F]',
+  '\P{ascii}' => $Open.'[\xA1-\xDF]|' .$DBC.$Close,
+
+  '\p{roman}' => '[\x00-\x7F]',
+  '\P{roman}' => $Open.'[\xA1-\xDF]|' .$DBC.$Close,
+
+  '\p{word}'   => $Open.'[0-9A-Z_a-z\xA6-\xDF]|\x81[\x4A\x4B\x52-\x5B]|'
 		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
 		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
 		. '\x84[\x40-\x60\x70-\x7E\x80-\x91]|\x88[\x9F-\xFC]|'
 		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
-		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
+		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
 
-  '\P{IsWord}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xA5]|'
+  '\P{word}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xA5]|'
 		. '\x81[\x40-\x49\x4C-\x51\x5C-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
 		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
 		. '\x84[\x61-\x6F\x92-\xFC]|'
 		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
-		. '\xEA[\xA5-\xFC])',
+		. '\xEA[\xA5-\xFC]'.$Close,
 
-  '\p{IsHankaku}' => '[\xA1-\xDF]',
-  '\P{IsHankaku}' => $Open.'[\x00-\x7F]|' . $DBC . ')',
-  '\p{IsZenkaku}' => "$Open$DBC)",
-  '\P{IsZenkaku}' => "$Open$SBC)",
-  '\p{IsX0201}'   => "$Open$SBC)",
-  '\P{IsX0201}'   => "$Open$DBC)",
+  '\p{hankaku}' => '[\xA1-\xDF]',
+  '\P{hankaku}' => $Open.'[\x00-\x7F]|' .$DBC.$Close,
+  '\p{zenkaku}' => "$Open$DBC$Close",
+  '\P{zenkaku}' => "$Open$SBC$Close",
+  '\p{x0201}'   => "$Open$SBC$Close",
+  '\P{x0201}'   => "$Open$DBC$Close",
 
-  '\p{IsX0208}' => $Open.'\x81[\x40-\x7E'
+  '\p{x0208}' => $Open.'\x81[\x40-\x7E'
 		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
 		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
 		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
 		. '\x84[\x40-\x60\x70-\x7E\x80-\x91\x9F-\xBE]|'
 		. '\x88[\x9F-\xFC]|\x98[\x40-\x72\x9F-\xFC]|'
 		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
-		. '\xEA[\x40-\x7E\x80-\xA4])',
+		. '\xEA[\x40-\x7E\x80-\xA4]'
+		.$Close,
 
-  '\P{IsX0208}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+  '\P{x0208}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '\x81[\xAD-\xB7\xC0-\xC7\xCF-\xD9\xE9-\xEF\xF8-\xFB]|'
 		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
 		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
 		. '\x84[\x61-\x6F\x92-\x9E\xBF-\xFC]|'
 		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
-		. '\xEA[\xA5-\xFC])',
+		. '\xEA[\xA5-\xFC]'.$Close,
 
-  '\p{InLatin}' => $Open.'[\x41-\x5A\x61-\x7A])',
-  '\P{InLatin}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.')',
-  '\p{InFullLatin}' => $Open.'\x82[\x60-\x79\x81-\x9A])',
-  '\P{InFullLatin}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+  '\p{jis}'   => $Open.'[\x00-\x7F\xA1-\xDF]|\x81[\x40-\x7E'
+		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
+		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
+		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
+		. '\x84[\x40-\x60\x70-\x7E\x80-\x91\x9F-\xBE]|'
+		. '\x88[\x9F-\xFC]|\x98[\x40-\x72\x9F-\xFC]|'
+		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
+		. '\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
+
+  '\P{jis}'   => $Open
+		. '\x81[\xAD-\xB7\xC0-\xC7\xCF-\xD9\xE9-\xEF\xF8-\xFB]|'
+		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
+		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
+		. '\x84[\x61-\x6F\x92-\x9E\xBF-\xFC]|'
+		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
+		. '\xEA[\xA5-\xFC]'
+		.$Close,
+
+  '\p{latin}' => $Open.'[\x41-\x5A\x61-\x7A]'.$Close,
+  '\P{latin}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.$Close,
+
+  '\p{fulllatin}' => $Open.'\x82[\x60-\x79\x81-\x9A]'.$Close,
+  '\P{fulllatin}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{InGreek}' => $Open.'\x83[\x9f-\xb6\xbf-\xd6])',
-  '\P{InGreek}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC]'
+		. $Close,
+
+  '\p{greek}' => $Open.'\x83[\x9f-\xb6\xbf-\xd6]'.$Close,
+  '\P{greek}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81\x82\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x83[\x40-\x7E\x80-\x9e\xb7-\xbe\xd7-\xFC])',
-  '\p{InCyrillic}' => $Open.'\x84[\x40-\x60\x70-\x7E\x80-\x91])',
-  '\P{InCyrillic}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x83[\x40-\x7E\x80-\x9e\xb7-\xbe\xd7-\xFC]'
+		. $Close,
+
+  '\p{cyrillic}' => $Open.'\x84[\x40-\x60\x70-\x7E\x80-\x91]'.$Close,
+  '\P{cyrillic}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81-\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x84[\x61-\x6f\x92-\xFC])',
-  '\p{InHalfKana}' => '[\xA6-\xDF]',
-  '\P{InHalfKana}' => $Open.'[\x00-\x7F\xA1-\xA5]|' . $DBC . ')',
-  '\p{InHiragana}' => $Open.'\x82[\x9F-\xF1]|\x81[\x4A\x4B\x54\x55])',
-  '\P{InHiragana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x84[\x61-\x6f\x92-\xFC]'
+		. $Close,
+
+  '\p{european}' => $Open.'[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A]|'
+		. '\x83[\x9f-\xb6\xbf-\xd6]|\x84[\x40-\x60\x70-\x7E\x80-\x91]'
+		. $Close,
+
+  '\P{european}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+		. '[\x81\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC]|'
+		. '\x83[\x40-\x7E\x80-\x9e\xb7-\xbe\xd7-\xFC]|'
+		. '\x84[\x61-\x6f\x92-\xFC]'. $Close,
+
+  '\p{halfkana}' => '[\xA6-\xDF]',
+  '\P{halfkana}' => $Open.'[\x00-\x7F\xA1-\xA5]|' .$DBC.$Close,
+
+  '\p{hiragana}' => $Open.'\x82[\x9F-\xF1]|\x81[\x4A\x4B\x54\x55]'.$Close,
+  '\P{hiragana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|'
-		. '\x81[\x40-\x49\x4C-\x53\x56-\x7E\x80-\xFC])',
-  '\p{InKatakana}' => $Open.'\x83[\x40-\x7E\x80-\x96]|\x81[\x52\x53\x5B])',
-  '\P{InKatakana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x81[\x40-\x49\x4C-\x53\x56-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{katakana}' => $Open.'\x83[\x40-\x7E\x80-\x96]|\x81[\x52\x53\x5B]'.$Close,
+  '\P{katakana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x82\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x83[\x97-\xFC]|'
-		. '\x81[\x40-\x51\x54-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InFullKana}' => $Open.'\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
-		    . '\x81[\x4A\x4B\x5B\x52-\x55])',
-  '\P{InFullKana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x81[\x40-\x51\x54-\x5A\x5C-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{fullkana}' => $Open.'\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
+		    . '\x81[\x4A\x4B\x5B\x52-\x55]'.$Close,
+  '\P{fullkana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|\x83[\x97-\xFC]|'
-		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InKana}' => $Open.'[\xA6-\xDF]|\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
-		    . '\x81[\x4A\x4B\x5B\x52-\x55])',
-  '\P{InKana}' => $Open.'[\x00-\x7F\xA1-\xA5]|'
+		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{kana}' => $Open.'[\xA6-\xDF]|\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
+		    . '\x81[\x4A\x4B\x5B\x52-\x55]'.$Close,
+  '\P{kana}' => $Open.'[\x00-\x7F\xA1-\xA5]|'
 		. '[\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|\x83[\x97-\xFC]|'
-		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InKanji1}'  => $Open.'\x88[\x9F-\xFC]|\x98[\x40-\x72]|'
-		. '[\x89-\x97][\x40-\x7E\x80-\xFC])',
-  '\P{InKanji1}'  => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{kanji0}'  => $Open.'\x81[\x56-\x5A]'.$Close,
+  '\P{kanji0}'  => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x81[\x40-\x55\x5b-\x7E\x80-\xFC]|'
+		. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{kanji1}'  => $Open.'\x88[\x9F-\xFC]|\x98[\x40-\x72]|'
+		. '[\x89-\x97][\x40-\x7E\x80-\xFC]'.$Close,
+  '\P{kanji1}'  => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\xFC]|'
-		. '[\x81-\x87\x99-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{InKanji2}'  => $Open.'\x98[\x9F-\xFC]|[\x99-\x9F\xE0-\xE9]'
-		. '[\x40-\x7E\x80-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
-  '\P{InKanji2}'  => $Open.'[\x00-\x7F\xA1-\xDF]|\x98[\x40-\x7E\x80-\x9E]|'
-		. '[\x81-\x97\xEB-\xFC][\x40-\x7E\x80-\xFC]|\xEA[\xA5-\xFC])',
-  '\p{InKanji}'   => $Open.'\x81[\x56-\x5A]|\x88[\x9F-\xFC]|'
+		. '[\x81-\x87\x99-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. $Close,
+
+  '\p{kanji2}'  => $Open.'\x98[\x9F-\xFC]|[\x99-\x9F\xE0-\xE9]'
+		. '[\x40-\x7E\x80-\xFC]|\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
+  '\P{kanji2}'  => $Open.'[\x00-\x7F\xA1-\xDF]|\x98[\x40-\x7E\x80-\x9E]|'
+		. '[\x81-\x97\xEB-\xFC][\x40-\x7E\x80-\xFC]|\xEA[\xA5-\xFC]'
+		. $Close,
+
+  '\p{kanji}'   => $Open.'\x81[\x56-\x5A]|\x88[\x9F-\xFC]|'
 		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
-		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
-  '\P{InKanji}'   => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
+  '\P{kanji}'   => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '\x81[\x40-\x55\x5b-\x7E\x80-\xFC]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
 		. '[\x82-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\xEA[\xA5-\xFC])',
-  '\p{InBoxDrawing}' => $Open.'\x84[\x9F-\xBE])',
-  '\P{InBoxDrawing}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\xEA[\xA5-\xFC]'
+		. $Close,
+
+  '\p{boxdrawing}' => $Open.'\x84[\x9F-\xBE]'.$Close,
+  '\P{boxdrawing}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81-\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x84[\x40-\x7E\x80-\x9E\xBF-\xFC])',
+		. '\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]'
+		. $Close,
+
+  '\p{nec}' => $Open. '\x87[\x40-\x5d\x5f-\x75\x7e\x80-\x9c]|'
+		. '\xed[\x40-\x7e\x80-\xfc]|\xee[\x40-\x7e\x80-\xec\xef-\xfc]'
+		. $Close,
+
+  '\p{ibm}' => $Open.'[\xfa-\xfb][\x40-\x7e\x80-\xfc]|\xfc[\x40-\x4b]'.$Close,
+
+  '\p{vendor}' => $Open. '\x87[\x40-\x5d\x5f-\x75\x7e\x80-\x9c]|'
+		. '[\xed\xfa-\xfb][\x40-\x7e\x80-\xfc]|'
+		. '\xee[\x40-\x7e\x80-\xec\xef-\xfc]|\xfc[\x40-\x4b]'
+		. $Close,
+
+  '\p{mswin}' => $Open.'[\x00-\x7f\xa1-\xdf]|'
+	. '\x81[\x40-\x7e\x80-\xac\xb8-\xbf\xc8-\xce\xda-\xe8\xf0-\xf7\xfc]|'
+	. '\x82[\x4f-\x58\x60-\x79\x81-\x9a\x9f-\xf1]|'
+	. '\x83[\x40-\x7e\x80-\x96\x9f-\xb6\xbf-\xd6]|'
+	. '\x84[\x40-\x60\x70-\x7e\x80-\x91\x9f-\xbe]|'
+	. '\x88[\x9f-\xfc]|\x98[\x40-\x72\x9f-\xfc]|\xea[\x40-\x7e\x80-\xa4]|'
+	. '[\x89-\x97\x99-\x9f\xe0-\xe9][\x40-\x7e\x80-\xfc]|'
+	. '\x87[\x40-\x5d\x5f-\x75\x7e\x80-\x9c]|'
+	. '\xed[\x40-\x7e\x80-\xfc]|\xee[\x40-\x7e\x80-\xec\xef-\xfc]|'
+	. '[\xfa\xfb][\x40-\x7e\x80-\xfc]|\xfc[\x40-\x4b]'
+	. $Close,
 );
 
-my %Class = qw(
-  digit IsDigit
-  upper IsUpper
-  lower IsLower
-  alpha IsAlpha
-  alnum IsAlnum
-  punct IsPunct
-  space IsSpace
-  graph IsGraph
-  print IsPrint
-  cntrl IsCntrl
-  ascii IsAscii
-  word  IsWord
-  boxdrawing InBoxDrawing
-  latin     InLatin
-  fulllatin InFullLatin
-  greek     InGreek
-  cyrillic  InCyrillic
-  hankaku   IsHankaku
-  zenkaku   IsZenkaku
-  x0201     IsX0201
-  x0208     IsX0208
-  kanji     InKanji
-  kanji1    InKanji1
-  kanji2    InKanji2
-  halfkana  InHalfKana
-  hiragana  InHiragana
-  katakana  InKatakana
-  fullkana  InFullKana
-  kana      InKana
+
+for (qw/ nec ibm mswin vendor /) {
+    $Re{"\\P{$_}"} = $Open.'(?!'. $Re{ "\\p{$_}" } .')'. $Char.$Close;
+}
+
+my %AbbrevProp = qw(
+  X  xdigit
+  D  digit
+  U  upper
+  L  lower
+  A  alpha
+  W  word
+  P  punct
+  G  graph
+  S  space
+  C  cntrl
+  R  roman
+  Z  zenkaku
+  J  jis
+  N  nec
+  I  ibm
+  V  vendor
+  M  mswin
+  E  european
+  H  hiragana
+  K  katakana
+  0  kanji0
+  1  kanji1
+  2  kanji2
+  B  boxdrawing
 );
+
+#
+# _parse_prop('p' or 'P', ref to string)
+# returning '\p{digit}' etc.
+#
+sub _parse_prop {
+  my($key, $rev);
+  my $p = shift;
+  for(${ $_[0] }) {
+    if(s/^\{//) {
+      $rev = s/^\^// ? '^' : '';
+      s/^I[sn]//; # XXX, deprecated
+      if(s/^([0-9A-Za-z]+)\}//){
+        $key = lc $1;
+      } elsif(s/^([0-9A-Za-z]*(?![0-9A-Za-z])$Char)//o){
+        croak sprintf($ErrNotAlnum, "\\$p\{$rev$1");
+      } else {
+        croak sprintf($ErrUnTermin, "\\$p\{$_}", '}');
+      }
+    } else {
+      $rev = s/^\^// ? '^' : '';
+      if(s/^([\x21-\x7e])//){
+        $key = $AbbrevProp{uc $1} || $1;
+      } elsif(s/^($Char)//o){
+        croak sprintf($ErrNotASCII, "\\$p$rev$1");
+      } else {
+        croak sprintf($ErrUnTermin, "\\$p^", '');
+      }
+    }
+  }
+  if($rev) { $p = $p eq 'p' ? 'P' : 'p' }
+  return "\\$p\{$key\}";
+}
+
+#
+# _parse_posix(ref to string)
+#   called after "[:" in a character class.
+#   returning '\p{digit}' etc.
+#
+sub _parse_posix {
+  my($key, $rev);
+
+  for(${ $_[0] }) {
+    $rev = s/^\^// ? '^' : '';
+    if(s/^([0-9A-Za-z]+)\:\]//){
+      $key = lc $1;
+    } elsif(s/^([0-9A-Za-z]*(?![:])$Char)//o){
+      croak sprintf($ErrNotAlnum, "[:$rev$1");
+    } else {
+      croak sprintf($ErrUnTermin, "[:$rev$_", ":]");
+    }
+  }
+  return $rev ? "\\P\{$key\}" : "\\p\{$key\}";
+}
+
+#
+# _parse_literal(string)
+#   returning a literal.
+#
+sub _parse_literal {
+  my $str = shift;
+  my $ret = '';
+  while(length $str){
+    $ret .= _parse_char(\$str);
+  }
+  $ret;
+}
+
+
+#
+# _parse_char(ref to string)
+#   returning a single- or double-byte char.
+#
+sub _parse_char {
+  for(${ $_[0] }) {
+    if($_ eq '\\') {
+      croak sprintf($ErrBackTips);
+    }
+    if(s/^\\([0-7][0-7][0-7])//) {
+      return chr(oct $1);
+    }
+    if(s/^\\x//) {
+      if(s/^([0-9A-Fa-f][0-9A-Fa-f])//) {
+        return chr(hex $1);
+      }
+      if(s/^\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
+        return chr(hex $1) . chr(hex $2);
+      }
+      if(length) {
+        croak sprintf($ErrInvalHex, $_);
+      } else {
+        croak sprintf($ErrUnTermin, '\x{$_', '}');
+      }
+    }
+    if(s/^\\c//) {
+      if(s/([\x00-\x7F])//) {
+        return chr( ord(uc $1) ^ 64 );
+      }
+      if(length) {
+        croak sprintf($ErrInvalFlw, ord, '\c', '[\x00-\x7F]');
+      } else {
+        croak sprintf($ErrUnTermin, '\c');
+      }
+    }
+    if(s/^\\a//) { return "\a" }
+    if(s/^\\b//) { return "\b" }
+    if(s/^\\e//) { return "\e" }
+    if(s/^\\f//) { return "\f" }
+    if(s/^\\n//) { return "\n" }
+    if(s/^\\r//) { return "\r" }
+    if(s/^\\t//) { return "\t" }
+    if(s/^\\0//) { return "\0" }
+    if(s/^\\([0-9A-Za-z])//){
+      croak sprintf($ErrInvalMch, "\\$1");
+    }
+    if(s/^\\?($Char)//o) { return $1 }
+    croak sprintf($ErrOddTrail, ord);
+  }
+}
+
+
+
+#
+# _parse_class(ref to string, mode)
+#   called after "[" at the beginning of a character class.
+#   returning a byte-oriented regexp.
+#
+sub _parse_class {
+  my(@re, $subclass);
+  my $mod = $_[1] || '';
+  my $state = 0; # enum: initial, char, range, subclass, last;
+
+  for(${ $_[0] }) {
+    while(length) {
+      if(s/^\]//) {
+        if(@re) {
+          if($state == 1) {
+            push @re, rechar(pop(@re), $mod);
+          } elsif($state == 2) {
+            push @re, rechar(pop(@re), $mod);
+            push @re, rechar('-', $mod);
+          }
+        } else {
+          push(@re, ']');
+          $state = 1;
+          next;
+        }
+        $state = 4;
+        last;
+      }
+
+      if(s/^\-//) {
+        if($state == 0) {
+          push @re, '-';
+          $state = 1;
+        } elsif($state == 1) {
+          $state = 2;
+        } elsif($state == 2) {
+          push @re, __expand(__ord(pop(@re)), __ord('-'), $mod);
+          $state = 0;
+        } else {
+          croak sprintf($ErrInvalRng, "-$_");
+        }
+        next;
+      }
+
+      $subclass = undef;
+      if(s/^\[\://) {
+        my $key = _parse_posix(\$_);
+        $subclass = defined $Re{$key} ? $Re{$key}
+           :croak sprintf($ErrUndef, $key);
+      }
+      elsif(s/^\\([pP])//) { # prop
+        my $key = _parse_prop($1, \$_);
+        $subclass = defined $Re{$key} ? $Re{$key}
+           :croak sprintf($ErrUndef, $key);
+      }
+      elsif(s/^(\\[dwsDWS])//) {
+        $subclass = $Re{ $1 };
+      }
+      elsif(s/^\[=\\?([\\=])=\]//) {
+        $subclass = defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
+      }
+      elsif(s/^\[=([^=]+)=\]//) {
+        my $lit = _parse_literal($1);
+        $subclass = defined $Eq{$lit} ? $Eq{$lit} : rechar($lit,$mod);
+      }
+
+      if(defined $subclass) {
+        if($state == 1) {
+          push @re, rechar(pop(@re), $mod);
+        } elsif($state == 2) {
+          croak sprintf($ErrInvalRng, "-$_");
+        }
+        push @re, $subclass;
+        $state = 3;
+        next;
+      }
+
+      my $char = _parse_char(\$_);
+      if($state == 1) {
+        push @re, rechar(pop(@re), $mod);
+        push @re, $char;
+        $state = 1;
+      } elsif($state == 2) {
+        push @re, __expand(__ord(pop(@re)), __ord($char), $mod);
+        $state = 0;
+      } else {
+        push @re, $char;
+        $state = 1;
+      }
+    }
+  }
+
+  if($state != 4) {
+    croak sprintf($ErrUnTermin, "character class", ']');
+  }
+
+  return '(?:' . join('|', @re) . ')';
+}
+
 
 my(%Cache);
 
@@ -282,26 +613,21 @@ sub re
              $res .= '}';
              next;
           }
-          croak $Msg_cod;
+          croak $ErrCode;
         }
         if(s/^\)//){
           $res .= ')';
           next;
         }
-        croak $Msg_cod;
+        croak $ErrCode;
       }
-      if(s/^\x5B(\^?)(\x5D?
-        (?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\[=[^=]+=\]|\[=\\?==\]
-        |\x5Cc?[\x5C\x5D]|\x5C?(?![\x5C\x5D])$Char
-        )*
-      )\x5D//ox)
+      if(s/^\x5B(\^?)//)
       {
-        my($not,$cls) = ($1,$2);
-        if($2 eq ''){ croak $Msg_unm }
-        my $class = mkclass($cls,$mod);
+        my $not = $1;
+        my $class = _parse_class(\$_, $mod);
         $res .= $not ? "(?:(?!$class)$Char)" : $class;
         next;
-      } elsif (s/^\[//){ croak $Msg_ilb }
+      }
 
       if(s/^\\([.*+?^$|\\()\[\]{}])//){ # backslashed meta chars
         $res .= '\\'.$1;
@@ -331,19 +657,15 @@ sub re
         next;
       }
       if(s/^\\([dDwWsSCjJ])//){ # class
-        $res .= $Re{'\\'. $1};
+        $res .= $Re{ "\\$1" };
         next;
       }
-      if(s/^\\([pP])\{([0-9A-Z_a-z]+)\}//){ # prop
-        my($p, $key) = ($1,$2);
-        if(defined $Re{ "\\$p\{$key\}"}){
-          $res .= $Re{ "\\$p\{$key\}" }
-        } elsif(defined $Re{ "\\$p\{Is$key\}"}){
-          $res .= $Re{ "\\$p\{Is$key\}" }
-        } elsif(defined $Re{ "\\$p\{In$key\}"}){
-          $res .= $Re{ "\\$p\{In$key\}" }
+      if(s/^\\([pP])//) { # prop
+        my $key = _parse_prop($1, \$_);
+        if(defined $Re{$key}) {
+          $res .= $Re{$key};
         } else {
-          croak sprintf $Msg_und, "\\$p\{$key\}";
+          croak sprintf($ErrUndef, $key);
         }
         next;
       }
@@ -384,14 +706,14 @@ sub re
         next;
       }
       if($_ eq '\\'){
-        croak $Msg_bsl;
+        croak $ErrBackTips;
         next;
       }
       if(s/^\\?($Char)//o){
         $res .= rechar($1, $mod);
         next;
       }
-      croak sprintf $Msg_odd, ord;
+      croak sprintf($ErrOddTrail, ord);
     }
   }
   return $mod =~ /o/ ? ($Cache{$pat}{$mod} = $res) : $res;
@@ -491,7 +813,7 @@ sub dst
         $res .= $1;
         next;
       }
-      croak sprintf $Msg_odd, ord;
+      croak sprintf($ErrOddTrail, ord);
     }
   }
   return $res;
@@ -536,149 +858,9 @@ sub replace
 }
 
 
-sub mkclass
-{
-  my($tmp,@res);
-  my $pat = shift;
-  my $mod = shift || '';
-  for($pat){
-    while(length){
-      if(s/^(\[\:\x5e?[0-9A-Z_a-z]+\:\])//){
-        $tmp .= $1;
-        next;
-      }
-      if(s/^(\[=\\?[=\x2D\x5B\x5C]=\])//){
-        $tmp .= $1;
-        next;
-      }
-      if(s/^(\[\=)(?=[^=]+\=\])//){
-        $tmp .= $1;
-        next;
-      }
-      if(s/^\\?\[// || s/^\\133// || s/^\\x5[bB]//){
-        $tmp .= '\\['; # prevent from confusion with [: :], [= =].
-        next;
-      }
-      if(s/^\\\\//  || s/^\\134// || s/^\\x5[cC]//){
-        $tmp .= '\\\\';
-        next;
-      }
-      if(s/^\\-//   || s/^\\055// || s/^\\x2[dD]//){
-        $tmp .= '\\-';
-        next;
-      }
-      if(s/^\\([0-7][0-7][0-7])//){
-        $tmp .= chr(oct $1);
-        next;
-      }
-      if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
-        $tmp .= chr(hex $1);
-        next;
-      }
-      if(s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
-        $tmp .= chr(hex $1) . chr(hex $2);
-        next;
-      }
-      if(s/^\\0//){ $tmp .= "\0"; next }
-      if(s/^\\a//){ $tmp .= "\a"; next }
-      if(s/^\\b//){ $tmp .= "\b"; next }
-      if(s/^\\e//){ $tmp .= "\e"; next }
-      if(s/^\\f//){ $tmp .= "\f"; next }
-      if(s/^\\n//){ $tmp .= "\n"; next }
-      if(s/^\\r//){ $tmp .= "\r"; next }
-      if(s/^\\t//){ $tmp .= "\t"; next }
-      if(s/^\\c([\x00-\x7F])//){
-        $tmp .= chr( ord(uc $1) ^ 64 );
-        next;
-      }
-      if(s/^(\\[dwsDWS])//){
-        $tmp .= $1;
-        next;
-      }
-      if(s/^(\\[pP]\{[0-9A-Z_a-z]+\})//){ # prop
-        $tmp .= $1;
-        next;
-      }
-      if(s/^\\?([\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])//){
-        $tmp .= $1;
-        next;
-      }
-      if(s/^\\?([\x00-\x7F\xA1-\xDF])//){
-        $tmp .= $1;
-        next;
-      }
-      croak sprintf $Msg_odd, ord;
-    }
-  }
-  for($tmp){
-    while(length){
-      if(s/^\[\:(\x5E?)([0-9A-Z_a-z]+)\:\]//){
-        my $class = '\\' . ($1 ? 'P' : 'p') .'{' . $Class{$2} .'}';
-        if(!defined $Re{$class}){croak sprintf $Msg_und, "[:$1$2:]"}
-        push @res, $Re{$class};
-        next;
-      }
-      if(s/^\[=\\([=\x2D\x5B\x5C])=\]//){
-        push @res, defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
-        next;
-      }
-      if(s/^\[=([^=]+|=)=\]//){
-        push @res, defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
-        next;
-      }
-      if(s/^(\\[dwsDWSjJ])//){
-        push @res, $Re{ $1 };
-        next;
-      }
-      if(s/^\\([pP])\{([0-9A-Z_a-z]+)\}//){ # prop
-        my($p, $key) = ($1,$2);
-        if(defined $Re{ "\\$p\{$key\}" }){
-          push @res, $Re{ "\\$p\{$key\}" }
-        } elsif(defined $Re{ "\\$p\{Is$key\}"}){
-          push @res, $Re{ "\\$p\{Is$key\}" }
-        } elsif(defined $Re{ "\\$p\{In$key\}"}){
-          push @res, $Re{ "\\$p\{In$key\}" }
-        } else {
-          croak sprintf $Msg_und, "\\$p\{$key\}";
-        }
-        next;
-      }
-      if(s/^
-	(\x5C[\x2D\x5B\x5C]|(?![\x5B\x5C])$Char)
-	\-
-	(\x5C[\x2D\x5B\x5C]|(?![\x5B\x5C])$Char)
-      //xo)
-      {
-        my($le,$tr) = (__ord($1), __ord($2)); # lead trail
-        push @res, __expand($le,$tr,$mod);
-        next;
-      }
-      if(s/\x5C([\x2D\x5B\x5C])//){
-        push @res, rechar($1,$mod);
-        next;
-      }
-      if(s/^($Char)//o){
-        push @res, rechar($1,$mod);
-        next;
-      }
-      croak sprintf $Msg_odd, ord;
-    }
-  }
-  return '(?:' . join('|', @res) . ')';
-}
+sub __ord  { length($_[0]) > 1 ? unpack('n', $_[0]) : ord($_[0]) }
 
-sub __ord
-{
-  my $c = shift;
-  $c =~ s/^\x5C//;
-  length($c) > 1 ? unpack('n', $c) : ord($c);
-}
-
-sub __ord2
-{
-  my $c = shift;
-  0xFF < $c ? unpack('C*', pack 'n', $c) : chr($c);
-}
+sub __ord2 { 0xFF < $_[0] ? unpack('C*', pack 'n', $_[0]) : chr($_[0]) }
 
 sub __expand
 {
@@ -688,7 +870,7 @@ sub __expand
   my($ini_f, $fin_f, $ini_t, $fin_t, $ini_c, $fin_c);
   my $trail = '[\x40-\x7e\x80-\xfc]';
 
-  if($fr > $to){ croak sprintf $Msg_rev, $fr, $to }
+  if($fr > $to){ croak sprintf($ErrReverse, $fr, $to) }
   if($fr <= 0x7F){
     $ini = $fr < 0x00 ? 0x00 : $fr;
     $fin = $to > 0x7F ? 0x7F : $to;
@@ -824,8 +1006,10 @@ sub splitchar
   my($str, $lim, @ret);
   ($str, $lim) = @_;
   $lim = 0 if ! defined $lim;
-  if($lim == 1){
-    @ret = ($str);
+  if($str eq ''){
+    return wantarray ? () : 0;
+  } elsif($lim == 1){
+    return wantarray ? ($str) : 1;
   } elsif($lim > 1) {
     while($str =~ s/($Char)//o){
       push @ret, $1;
@@ -852,8 +1036,11 @@ sub jsplit
   $pat = 'ARRAY' eq ref $thing ? re(@$thing) : re($thing);
   $str = shift;
   $lim = shift || 0;
-  return splitchar($str, $lim) if '' eq $pat;
+
+  return wantarray ? () : 0 if $str eq '';
+  return splitchar($str, $lim) if $pat eq '';
   return wantarray ? ($str) : 1 if $lim == 1;
+
   $cnt = 0;
   while(@mat = $str =~ /^($Char*?)($pat)/){
     if($mat[0] eq '' && $mat[1] eq ''){
@@ -879,10 +1066,12 @@ sub jsplit
 sub splitspace
 {
   my($str, $lim) = @_;
+  return wantarray ? () : 0 if $str eq '';
+
   defined $lim && 0 < $lim 
     ? do{
         (ref $str ? $$str : $str) =~ s/^(?:[ \n\r\t\f]|\x81\x40)+//;
-        jsplit('(?:[ \n\r\t\f]|\x81\x40)+', $str, $lim)
+        jsplit('(?o)[ \n\r\t\f\x{8140}]+', $str, $lim)
       }
     : split(' ', spaceZ2H($str), $lim);
 }
@@ -1084,7 +1273,7 @@ and returns the array given by split of the specified string into characters.
 
 =back
 
-=head2 Regexps
+=head2 Basic Regular Expressions
 
    regexp          meaning
 
@@ -1112,12 +1301,11 @@ and returns the array given by split of the specified string into characters.
 
    \a              alarm      (BEL)
    \b              backspace  (BS) * within character classes *
-   \t              tab        (HT, TAB)
-   \n              newline    (LF, NL)
-   \f              form feed  (FF)
-   \r              return     (CR)
    \e              escape     (ESC)
-
+   \f              form feed  (FF)
+   \n              newline    (LF, NL)
+   \r              return     (CR)
+   \t              tab        (HT, TAB)
    \0              null       (NUL)
 
    \ooo            octal single-byte character
@@ -1127,94 +1315,93 @@ and returns the array given by split of the specified string into characters.
 
       e.g. \012 \123 \x5c \x5C \x{824F} \x{9Fae} \cA \cZ \c^ \c?
 
-   regexp           equivalent character class
+=head2 Predefined Character Classes
 
-   \d               [\d]              [0-9]
- ! \D               [\D]              [^0-9]
-   \w               [\w]              [0-9A-Z_a-z]
- ! \W               [\W]              [^0-9A-Z_a-z]
-   \s               [\s]              [\t\n\r\f ]
- ! \S               [\S]              [^\t\n\r\f ]
+   \d                        [\d]              [0-9]
+   \D                        [\D]              [^0-9]
+   \w                        [\w]              [0-9A-Z_a-z]
+   \W                        [\W]              [^0-9A-Z_a-z]
+   \s                        [\s]              [\t\n\r\f ]
+   \S                        [\S]              [^\t\n\r\f ]
 
-   \p{IsDigit}      [[:digit:]]       [0-9‚O-‚X]
- ! \P{IsDigit}      [[:^digit:]]      [^0-9‚O-‚X]
-   \p{IsUpper}      [[:upper:]]       [A-Z‚`-‚y]
- ! \P{IsUpper}      [[:^upper:]]      [^A-Z‚`-‚y]
-   \p{IsLower}      [[:lower:]]       [a-z‚-‚š]
- ! \P{IsLower}      [[:^lower:]]      [^a-z‚-‚š]
-   \p{IsAlpha}      [[:alpha:]]       [A-Za-z‚`-‚y‚-‚š]
- ! \P{IsAlpha}      [[:^alpha:]]      [^A-Za-z‚`-‚y‚-‚š]
-   \p{IsAlnum}      [[:alnum:]]       [0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
- ! \P{IsAlnum}      [[:^alnum:]]      [^0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
+   \p{Xdigit}     \pX        [[:xdigit:]]      [0-9A-Fa-f]
 
-   \p{IsWord}       [[:word:]]
+   \p{Digit}      \pD        [[:digit:]]       [0-9‚O-‚X]
+   \p{Upper}      \pU        [[:upper:]]       [A-Z‚`-‚y]
+   \p{Lower}      \pL        [[:lower:]]       [a-z‚-‚š]
+   \p{Alpha}      \pA        [[:alpha:]]       [A-Za-z‚`-‚y‚-‚š]
+   \p{Alnum}     [\pA\pD]    [[:alnum:]]       [0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
+
+   \p{Word}       \pW        [[:word:]]        [_\p{Digit}\p{European}\p{Kana}\p{Kanji}]
           [0-9A-Z_a-z‚O-‚X‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘¦-ß‚Ÿ-‚ñƒ@-ƒ–JKR-[ˆŸ-˜r˜Ÿ-ê¤]
- ! \P{IsWord}       [[:^word:]]
-          [^0-9A-Z_a-z‚O-‚X‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘¦-ß‚Ÿ-‚ñƒ@-ƒ–JKR-[ˆŸ-˜r˜Ÿ-ê¤]
 
-   \p{IsPunct}      [[:punct:]]
+   \p{Punct}      \pP        [[:punct:]]
                 [!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
- ! \P{IsPunct}      [[:^punct:]]
-                [^!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
-   \p{IsSpace}      [[:space:]]       [\t\n\r\f \x{8140}]
- ! \P{IsSpace}      [[:^space:]]      [^\t\n\r\f \x{8140}]
- ! \p{IsGraph}      [[:graph:]]       [^\0- \x7F\x{8140}]
-   \P{IsGraph}      [[:^graph:]]      [\0- \x7F\x{8140}]
- ! \p{IsPrint}      [[:print:]]       [^\0- \x0B\x0E-\x1F\x7F]
-   \P{IsPrint}      [[:^print:]]      [\x00-\x08\x0B\x0E-\x1F\x7F]
-   \p{IsCntrl}      [[:cntrl:]]       [\x00-\x1F]
- ! \P{IsCntrl}      [[:^cntrl:]]      [^\x00-\x1F]
 
-   \p{IsAscii}      [[:ascii:]]       [\x00-\x7F]
- ! \P{IsAscii}      [[:^ascii:]]      [^\x00-\x7F]
-   \p{IsHankaku}    [[:hankaku:]]     [\xA1-\xDF]
- ! \P{IsHankaku}    [[:^hankaku:]]    [^\xA1-\xDF]
- ! \p{IsZenkaku}    [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
-   \P{IsZenkaku}    [[:^zenkaku:]]    [^\x{8140}-\x{FCFC}]
+   \p{Space}      \pS        [[:space:]]       [\t\n\r\f \x{8140}]
+   \p{Graph}      \pG        [[:graph:]]       [^\0- \x7F\x{8140}]
+   \p{Print}     [\pS\pG]    [[:print:]]       [^\0- \x0B\x0E-\x1F\x7F]
+   \p{Cntrl}      \pC        [[:cntrl:]]       [\x00-\x1F]
 
-   \p{IsX0201}      [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
- ! \P{IsX0201}      [[:^x0201:]]      [^\x00-\x7F\xA1-\xDF]
-   \p{IsX0208}      [[:x0208:]]
+   \p{Roman}      \pR        [[:roman:]]       [\x00-\x7F]
+   \p{ASCII}                 [[:ascii:]]       \p{Roman}
+   \p{Hankaku}               [[:hankaku:]]     [\xA1-\xDF]
+   \p{Zenkaku}    \pZ        [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
+
+   \p{X0201}                 [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
+   \p{X0208}                 [[:x0208:]]
           [\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
 
- ! \P{IsX0208}      [[:^x0208:]]
-          [^\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
+   \p{JIS}        \pJ        [[:jis:]]         [\p{X0201}\p{X0208}]
 
-   \p{InLatin}      [[:latin:]]       [A-Za-z]
- ! \P{InLatin}      [[:^latin:]]      [^A-Za-z]
-   \p{InFullLatin}  [[:fulllatin:]]   [‚`-‚y‚-‚š]
- ! \P{InFullLatin}  [[:^fulllatin:]]  [^‚`-‚y‚-‚š]
-   \p{InGreek}      [[:greek:]]       [ƒŸ-ƒ¶ƒ¿-ƒÖ]
- ! \P{InGreek}      [[:^greek:]]      [^ƒŸ-ƒ¶ƒ¿-ƒÖ]
-   \p{InCyrillic}   [[:cyrillic:]]    [„@-„`„p-„‘]
- ! \P{InCyrillic}   [[:^cyrillic:]]   [^„@-„`„p-„‘]
-   \p{InHalfKana}   [[:halfkana:]]    [¦-ß]
- ! \P{InHalfKana}   [[:^halfkana:]]   [^¦-ß]
-   \p{InHiragana}   [[:hiragana:]]    [‚Ÿ-‚ñJKTU]
- ! \P{InHiragana}   [[:^hiragana:]]   [^‚Ÿ-‚ñJKTU]
-   \p{InKatakana}   [[:katakana:]]    [ƒ@-ƒ–[RS]
- ! \P{InKatakana}   [[:^katakana:]]   [^ƒ@-ƒ–[RS]
-   \p{InFullKana}   [[:fullkana:]]    [‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
- ! \P{InFullKana}   [[:^fullkana:]]   [^‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
-   \p{InKana}       [[:kana:]]        [¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
- ! \P{InKana}       [[:^kana:]]       [^¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
-   \p{InKanji1}     [[:kanji1:]]      [ˆŸ-˜r]
- ! \P{InKanji1}     [[:^kanji1:]]     [^ˆŸ-˜r]
-   \p{InKanji2}     [[:kanji2:]]      [˜Ÿ-ê¤]
- ! \P{InKanji2}     [[:^kanji2:]]     [^˜Ÿ-ê¤]
-   \p{InKanji}      [[:kanji:]]       [V-ZˆŸ-˜r˜Ÿ-ê¤]
- ! \P{InKanji}      [[:^kanji:]]      [^V-ZˆŸ-˜r˜Ÿ-ê¤]
-   \p{InBoxDrawing} [[:boxdrawing:]]  [„Ÿ-„¾]
- ! \P{InBoxDrawing} [[:^boxdrawing:]] [^„Ÿ-„¾]
+   \p{NEC}        \pN        [[:nec:]]
+         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}\x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
 
-   * On \p{Prop} or \P{Prop} expressions, 'Is' or 'In' can be omitted
-     like \p{Digit} or \P{Kanji}.
-    (the omission of 'In' is an extension by this module)
+   \p{IBM}        \pI        [[:ibm:]]         [\x{fa40}-\x{fc4b}]
+   \p{Vendor}     \pV        [[:vendor:]]      [\p{NEC}\p{IBM}]
+   \p{MSWin}      \pM        [[:mswin:]]       [\p{JIS}\p{NEC}\p{IBM}]
 
-   * Character classes marked with <!> contain undefined codepoints
-     in JIS (JIS X 0201 or JIS X 0208).
+   \p{Latin}                 [[:latin:]]       [A-Za-z]
+   \p{FullLatin}             [[:fulllatin:]]   [‚`-‚y‚-‚š]
+   \p{Greek}                 [[:greek:]]       [ƒŸ-ƒ¶ƒ¿-ƒÖ]
+   \p{Cyrillic}              [[:cyrillic:]]    [„@-„`„p-„‘]
+   \p{European}   \pE        [[:european:]]    [A-Za-z‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘]
+   \p{HalfKana}              [[:halfkana:]]    [¦-ß]
+   \p{Hiragana}   \pH        [[:hiragana:]]    [‚Ÿ-‚ñJKTU]
+   \p{Katakana}   \pK        [[:katakana:]]    [ƒ@-ƒ–[RS]
+   \p{FullKana}  [\pH\pK]    [[:fullkana:]]    [‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
+   \p{Kana}                  [[:kana:]]        [¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
+   \p{Kanji0}     \p0        [[:kanji0:]]      [V-Z]
+   \p{Kanji1}     \p1        [[:kanji1:]]      [ˆŸ-˜r]
+   \p{Kanji2}     \p2        [[:kanji2:]]      [˜Ÿ-ê¤]
+   \p{Kanji}    [\p0\p1\p2]  [[:kanji:]]       [V-ZˆŸ-˜r˜Ÿ-ê¤]
+   \p{BoxDrawing} \pB        [[:boxdrawing:]]  [„Ÿ-„¾]
 
-=head2 Character class
+=over 4
+
+=item *
+
+C<\p{Prop}>, C<\P{^Prop}>, C<[\p{Prop}]>, etc. are equivalent to each other;
+and their complements are C<\P{Prop}>, C<\p{^Prop}>, C<[\P{Prop}]>,
+C<[^\p{Prop}]>, etc.
+
+C<\pP>, C<\P^P>, C<[\pP]>, etc. are equivalent to each other;
+and their complements are C<\PP>, C<\p^P>, C<[\PP]>, C<[^\pP]>, etc.
+
+=item *
+
+C<[[:class:]]>is equivalent to C<[^[:^class:]]>;
+and their complements are C<[[:^class:]]> or C<[^[:class:]]>.
+
+=item *
+
+In C<\p{Prop}>, C<\P{Prop}>, C<[:class:]> expressions,
+C<Prop> and C<class> are case-insensitive
+(e.g. C<\p{digit}>, C<[:BoxDrawings:]>).
+
+=back
+
+=head2 Character classes
 
 Ranges in character class are supported. 
 

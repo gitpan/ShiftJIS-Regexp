@@ -1,7 +1,7 @@
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "1..13\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:split);
 $loaded = 1;
@@ -25,6 +25,11 @@ sub printH2Z {
   my $str = shift;
   $str =~ s/($char)/exists $table{$1} ? $table{$1} : $1/geo;
   $str;
+}
+
+sub listtostr {
+  my @a = @_;
+  return @a ? join('', map "<$_>", @a) : '';
 }
 
 {
@@ -105,3 +110,45 @@ print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
    && join('ー', jsplit ['(あ)', 'j'], '01234あいうえおアイウエオ')
 	eq '01234ーあーいうえおーアーイウエオ'
  ? "ok" : "not ok", " 9\n";
+
+
+{ # split of empty string
+  my($NG, $n);
+
+# splitchar in scalar context
+  $NG = 0;
+  for $n (-1..20){
+    my $core = @{[ split(//, '', $n) ]};
+    my $mbcs = jsplit('','',$n);
+    ++$NG unless $core == $mbcs;
+  }
+  print !$NG ? "ok" : "not ok", " 10\n";
+
+# splitchar in list context
+  $NG = 0;
+  for $n (-1..20){
+    my $core = listtostr( split //, '', $n);
+    my $mbcs = listtostr( jsplit('','',$n));
+    ++$NG unless $core eq $mbcs;
+  }
+  print !$NG ? "ok" : "not ok", " 11\n";
+
+# split(/ /, '') in list context
+  $NG = 0;
+  for $n (-1..5){
+    my $core = listtostr( split(/ /, '', $n) );
+    my $mbcs = listtostr( jsplit(' ', '', $n) );
+    ++$NG unless $core eq $mbcs;
+  }
+  print !$NG ? "ok" : "not ok", " 12\n";
+
+# splitspace('') in list context
+  $NG = 0;
+  for $n (-1..5){
+    my $core = listtostr( split(' ', '', $n) );
+    my $mbcs = listtostr( splitspace('', $n) );
+    ++$NG unless $core eq $mbcs;
+  }
+  print !$NG ? "ok" : "not ok", " 13\n";
+}
+

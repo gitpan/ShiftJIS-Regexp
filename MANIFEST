@@ -8,4 +8,5 @@ t/test.t
 t/cntrl.t
 t/split.t
 sample/class.t
+sample/class2.t
 sample/range.pl
