@@ -1,5 +1,8 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.12  Sat Jun 23 23:37:19 2001
+    - add \p{IsX0201}, \p{IsX0208}, etc.
+
 0.11  Wed Jun 13 02:56:24 2001
     - add o modifier.
     - now jsplit accepts pattern with modifiers (but somewhat tricky).

@@ -1,9 +1,9 @@
-A version 0.11
+ShiftJIS::Regexp: version 0.12
 ==============
 
 NAME
 
-ShiftJIS::Regexp - to use Shift_JIS-oriented regexps in the byte-oriented perl.
+ShiftJIS::Regexp - Shift_JIS-oriented regexps in the byte-oriented perl
 
 SYNOPSIS
 

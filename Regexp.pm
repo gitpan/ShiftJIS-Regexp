@@ -2,7 +2,7 @@ package ShiftJIS::Regexp;
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
 require Exporter;
 
@@ -21,16 +21,16 @@ my @Op    = qw(match replace);
 	all	=> [@Re, @Op, @Split],
 );
 
-$VERSION = '0.11';
+$VERSION = '0.12';
+$PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
-my $Msg_unm = 'ShiftJIS::Regexp Unmatched [ character class';
-my $Msg_ilb = 'ShiftJIS::Regexp Illegal byte in class (following [)';
-my $Msg_odd = 'ShiftJIS::Regexp \\x%02x is not followed by trail byte';
-my $Msg_und = 'ShiftJIS::Regexp %s not defined';
-my $Msg_rev = 'ShiftJIS::Regexp Invalid [] range (reverse) %d > %d';
-my $Msg_bsl = 'ShiftJIS::Regexp Trailing \ in regexp';
-my $Msg_cod = 'ShiftJIS::Regexp Sequence (?{...})'
-	    . ' not terminated or not {}-balanced';
+my $Msg_unm = $PACKAGE.' Unmatched [ character class';
+my $Msg_ilb = $PACKAGE.' Illegal byte in class (following [)';
+my $Msg_odd = $PACKAGE.' \\x%02x is not followed by trail byte';
+my $Msg_und = $PACKAGE.' %s not defined';
+my $Msg_rev = $PACKAGE.' Invalid [] range (reverse) %d > %d';
+my $Msg_bsl = $PACKAGE.' Trailing \ in regexp';
+my $Msg_cod = $PACKAGE.' Sequence (?{...}) not terminated or not {}-balanced';
 
 my $SBC = '[\x00-\x7F\xA1-\xDF]';
 my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
@@ -110,6 +110,26 @@ my %Re = (
   '\P{IsHankaku}' => $Open.'[\x00-\x7F]|' . $DBC . ')',
   '\p{IsZenkaku}' => $Open. $DBC . ')',
   '\P{IsZenkaku}' => $Open. $SBC . ')',
+  '\p{IsX0201}' => $Open. $SBC . ')',
+  '\P{IsX0201}' => $Open. $DBC . ')',
+
+  '\p{IsX0208}' => $Open.'\x81[\x40-\x7E'
+		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
+		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
+		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
+		. '\x84[\x40-\x60\x70-\x7E\x80-\x91\x9F-\xBE]|'
+		. '\x88[\x9F-\xFC]|\x98[\x40-\x72\x9F-\xFC]|'
+		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
+		. '\xEA[\x40-\x7E\x80-\xA4])',
+
+  '\P{IsX0208}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
+		. '\x81[\xAD-\xB7\xC0-\xC7\xCF-\xD9\xE9-\xEF\xF8-\xFB]|'
+		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
+		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
+		. '\x84[\x61-\x6F\x92-\x9E\xBF-\xFC]|'
+		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
+		. '\xEA[\xA5-\xFC])',
 
   '\p{InLatin}' => $Open.'[\x41-\x5A\x61-\x7A])',
   '\P{InLatin}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.')',
@@ -192,6 +212,8 @@ my %Class = (
   cyrillic  => 'InCyrillic',
   hankaku   => 'IsHankaku',
   zenkaku   => 'IsZenkaku',
+  x0201     => 'IsX0201',
+  x0208     => 'IsX0208',
   kanji     => 'InKanji',
   kanji1    => 'InKanji1',
   kanji2    => 'InKanji2',
@@ -819,8 +841,7 @@ __END__
 
 =head1 NAME
 
-ShiftJIS::Regexp - Perl module to use Shift_JIS-oriented regexps
-in the byte-oriented perl.
+ShiftJIS::Regexp - Perl module to use Shift_JIS-oriented regexps in the byte-oriented perl
 
 =head1 SYNOPSIS
 
@@ -849,9 +870,9 @@ The legal Shift_JIS character in this module must match the following regexp:
 
 Returns regexp parsable by the byte-oriented perl.
 
-PATTERN is specified as a string.
+C<PATTERN> is specified as a string.
 
-MODIFIER is specified as a string.
+C<MODIFIER> is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
      I  do case-insensitive pattern matching
@@ -889,9 +910,9 @@ B<C<o> modifier>
 
 emulation of C<m//> operator for the Shift_JIS encoding.
 
-PATTERN is specified as a string.
+C<PATTERN> is specified as a string.
 
-MODIFIER is specified as a string.
+C<MODIFIER> is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
      I  do case-insensitive pattern matching
@@ -924,7 +945,7 @@ returns the substituted string and the specified string is unaffected.
     1 while replace(\$str, "($d)($d$d$d)(?!$d)", '$1C$2');
     print $str; # ‹à‚PC‚T‚R‚OC‚O‚O‚O‰~
 
-MODIFIER is specified as a string.
+C<MODIFIER> is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
      I  do case-insensitive pattern matching
@@ -950,7 +971,7 @@ This function emulates C<CORE::split>.
 If not in list context, these functions do only return the number of fields
 found, but do not split into the C<@_> array.
 
-PATTERN is specified as a string.
+C<PATTERN> is specified as a string.
 
 But C<' '> as C<PATTERN> has no special meaning;
 when you want to split the string on whitespace,
@@ -958,7 +979,13 @@ you can use C<splitspace()> function.
 
     jsplit('^', '‚ ‚¢‚¤^‚¦‚¨ƒ^');
 
-MODIFIER is specified as a string.
+If you want to pass pattern with modifiers,
+specify an arrayref of C<[PATTERN, MODIFIER]> as the first argument.
+
+    jsplit([ '‚ ', 'jo' ], '01234‚ ‚¢‚¤‚¦‚¨ƒAƒCƒEƒGƒI');
+
+
+C<MODIFIER> is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
      I  do case-insensitive pattern matching
@@ -971,11 +998,6 @@ MODIFIER is specified as a string.
         unless backslashed or inside a character class
 
      o  once parsed (not compiled!) and the result is cached internally.
-
-If you want to pass pattern with modifiers,
-specify an arrayref of C<[PATTERN, MODIFIER]> as the first argument.
-
-    jsplit([ '‚ ', 'j' ], '01234‚ ‚¢‚¤‚¦‚¨ƒAƒCƒEƒGƒI');
 
 =item C<splitspace(STRING)>
 
@@ -990,7 +1012,7 @@ Leading whitespace characters do not produce any field.
 =item C<splitchar(STRING, LIMIT)>
 
 This function emulates C<CORE::split //, STRING>
-and returns the array given by split of the supplied string into characters.
+and returns the array given by split of the specified string into characters.
 
 =back
 
@@ -1040,78 +1062,89 @@ and returns the array given by split of the supplied string into characters.
    regexp           equivalent character class
 
    \d               [\d]              [0-9]
-   \D               [\D]              [^0-9]
+ ! \D               [\D]              [^0-9]
    \w               [\w]              [0-9A-Z_a-z]
-   \W               [\W]              [^0-9A-Z_a-z]
+ ! \W               [\W]              [^0-9A-Z_a-z]
    \s               [\s]              [\t\n\r\f ]
-   \S               [\S]              [^\t\n\r\f ]
+ ! \S               [\S]              [^\t\n\r\f ]
 
    \p{IsDigit}      [[:digit:]]       [0-9‚O-‚X]
-   \P{IsDigit}      [[:^digit:]]      [^0-9‚O-‚X]
+ ! \P{IsDigit}      [[:^digit:]]      [^0-9‚O-‚X]
    \p{IsUpper}      [[:upper:]]       [A-Z‚`-‚y]
-   \P{IsUpper}      [[:^upper:]]      [^A-Z‚`-‚y]
+ ! \P{IsUpper}      [[:^upper:]]      [^A-Z‚`-‚y]
    \p{IsLower}      [[:lower:]]       [a-z‚-‚š]
-   \P{IsLower}      [[:^lower:]]      [^a-z‚-‚š]
+ ! \P{IsLower}      [[:^lower:]]      [^a-z‚-‚š]
    \p{IsAlpha}      [[:alpha:]]       [A-Za-z‚`-‚y‚-‚š]
-   \P{IsAlpha}      [[:^alpha:]]      [^A-Za-z‚`-‚y‚-‚š]
+ ! \P{IsAlpha}      [[:^alpha:]]      [^A-Za-z‚`-‚y‚-‚š]
    \p{IsAlnum}      [[:alnum:]]       [0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
-   \P{IsAlnum}      [[:^alnum:]]      [^0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
+ ! \P{IsAlnum}      [[:^alnum:]]      [^0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
 
    \p{IsWord}       [[:word:]]
           [0-9A-Z_a-z‚O-‚X‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘¦-ß‚Ÿ-‚ñƒ@-ƒ–JKR-[ˆŸ-˜r˜Ÿ-ê¤]
-   \P{IsWord}       [[:^word:]]
+ ! \P{IsWord}       [[:^word:]]
           [^0-9A-Z_a-z‚O-‚X‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘¦-ß‚Ÿ-‚ñƒ@-ƒ–JKR-[ˆŸ-˜r˜Ÿ-ê¤]
 
    \p{IsPunct}      [[:punct:]]
                 [!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
-   \P{IsPunct}      [[:^punct:]]
+ ! \P{IsPunct}      [[:^punct:]]
                 [^!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
    \p{IsSpace}      [[:space:]]       [\t\n\r\f \x{8140}]
-   \P{IsSpace}      [[:^space:]]      [^\t\n\r\f \x{8140}]
-   \p{IsGraph}      [[:graph:]]       [^\0- \x7F\x{8140}]
+ ! \P{IsSpace}      [[:^space:]]      [^\t\n\r\f \x{8140}]
+ ! \p{IsGraph}      [[:graph:]]       [^\0- \x7F\x{8140}]
    \P{IsGraph}      [[:^graph:]]      [\0- \x7F\x{8140}]
-   \p{IsPrint}      [[:print:]]       [^\0- \x0B\x0E-\x1F\x7F]
+ ! \p{IsPrint}      [[:print:]]       [^\0- \x0B\x0E-\x1F\x7F]
    \P{IsPrint}      [[:^print:]]      [\x00-\x08\x0B\x0E-\x1F\x7F]
    \p{IsCntrl}      [[:cntrl:]]       [\x00-\x1F]
-   \P{IsCntrl}      [[:^cntrl:]]      [^\x00-\x1F]
+ ! \P{IsCntrl}      [[:^cntrl:]]      [^\x00-\x1F]
 
    \p{IsAscii}      [[:ascii:]]       [\x00-\x7F]
-   \P{IsAscii}      [[:^ascii:]]      [^\x00-\x7F]
+ ! \P{IsAscii}      [[:^ascii:]]      [^\x00-\x7F]
    \p{IsHankaku}    [[:hankaku:]]     [\xA1-\xDF]
-   \P{IsHankaku}    [[:^hankaku:]]    [^\xA1-\xDF]
-   \p{IsZenkaku}    [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
+ ! \P{IsHankaku}    [[:^hankaku:]]    [^\xA1-\xDF]
+ ! \p{IsZenkaku}    [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
    \P{IsZenkaku}    [[:^zenkaku:]]    [^\x{8140}-\x{FCFC}]
 
+   \p{IsX0201}      [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
+ ! \P{IsX0201}      [[:^x0201:]]      [^\x00-\x7F\xA1-\xDF]
+   \p{IsX0208}      [[:x0208:]]
+          [\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
+
+ ! \P{IsX0208}      [[:^x0208:]]
+          [^\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
+
    \p{InLatin}      [[:latin:]]       [A-Za-z]
-   \P{InLatin}      [[:^latin:]]      [^A-Za-z]
+ ! \P{InLatin}      [[:^latin:]]      [^A-Za-z]
    \p{InFullLatin}  [[:fulllatin:]]   [‚`-‚y‚-‚š]
-   \P{InFullLatin}  [[:^fulllatin:]]  [^‚`-‚y‚-‚š]
+ ! \P{InFullLatin}  [[:^fulllatin:]]  [^‚`-‚y‚-‚š]
    \p{InGreek}      [[:greek:]]       [ƒŸ-ƒ¶ƒ¿-ƒÖ]
-   \P{InGreek}      [[:^greek:]]      [^ƒŸ-ƒ¶ƒ¿-ƒÖ]
+ ! \P{InGreek}      [[:^greek:]]      [^ƒŸ-ƒ¶ƒ¿-ƒÖ]
    \p{InCyrillic}   [[:cyrillic:]]    [„@-„`„p-„‘]
-   \P{InCyrillic}   [[:^cyrillic:]]   [^„@-„`„p-„‘]
+ ! \P{InCyrillic}   [[:^cyrillic:]]   [^„@-„`„p-„‘]
    \p{InHalfKana}   [[:halfkana:]]    [¦-ß]
-   \P{InHalfKana}   [[:^halfkana:]]   [^¦-ß]
+ ! \P{InHalfKana}   [[:^halfkana:]]   [^¦-ß]
    \p{InHiragana}   [[:hiragana:]]    [‚Ÿ-‚ñJKTU]
-   \P{InHiragana}   [[:^hiragana:]]   [^‚Ÿ-‚ñJKTU]
+ ! \P{InHiragana}   [[:^hiragana:]]   [^‚Ÿ-‚ñJKTU]
    \p{InKatakana}   [[:katakana:]]    [ƒ@-ƒ–[RS]
-   \P{InKatakana}   [[:^katakana:]]   [^ƒ@-ƒ–[RS]
+ ! \P{InKatakana}   [[:^katakana:]]   [^ƒ@-ƒ–[RS]
    \p{InFullKana}   [[:fullkana:]]    [‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
-   \P{InFullKana}   [[:^fullkana:]]   [^‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
+ ! \P{InFullKana}   [[:^fullkana:]]   [^‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
    \p{InKana}       [[:kana:]]        [¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
-   \P{InKana}       [[:^kana:]]       [^¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
+ ! \P{InKana}       [[:^kana:]]       [^¦-ß‚Ÿ-‚ñƒ@-ƒ–JK[TURS]
    \p{InKanji1}     [[:kanji1:]]      [ˆŸ-˜r]
-   \P{InKanji1}     [[:^kanji1:]]     [^ˆŸ-˜r]
+ ! \P{InKanji1}     [[:^kanji1:]]     [^ˆŸ-˜r]
    \p{InKanji2}     [[:kanji2:]]      [˜Ÿ-ê¤]
-   \P{InKanji2}     [[:^kanji2:]]     [^˜Ÿ-ê¤]
+ ! \P{InKanji2}     [[:^kanji2:]]     [^˜Ÿ-ê¤]
    \p{InKanji}      [[:kanji:]]       [V-ZˆŸ-˜r˜Ÿ-ê¤]
-   \P{InKanji}      [[:^kanji:]]      [^V-ZˆŸ-˜r˜Ÿ-ê¤]
+ ! \P{InKanji}      [[:^kanji:]]      [^V-ZˆŸ-˜r˜Ÿ-ê¤]
    \p{InBoxDrawing} [[:boxdrawing:]]  [„Ÿ-„¾]
-   \P{InBoxDrawing} [[:^boxdrawing:]] [^„Ÿ-„¾]
+ ! \P{InBoxDrawing} [[:^boxdrawing:]] [^„Ÿ-„¾]
 
    * On \p{Prop} or \P{Prop} expressions, 'Is' or 'In' can be omitted
      like \p{Digit} or \P{Kanji}.
     (the omission of 'In' is an extension by this module)
+
+   * Character classes marked with <!> contain undefined codepoints
+     in JIS (JIS X 0201 or JIS X 0208).
 
 =over 4
 
@@ -1131,7 +1164,7 @@ e.g. C<re('[\xA0-\xFF]')>, is croaked.
 Character classes that match non-Shift_JIS substring
 are not supported (use C<\C> or alternation).
 
-=item Code embedded in regexp (Perl 5.005 or better)
+=item Code embedded in regexp (Perl 5.005 or later)
 
 Parsing C<(?{ ... })> or C<(??{ ... })> assertions is carried out
 without any special care of double-byte characters.
@@ -1209,13 +1242,13 @@ The regexps of the word boundary, C<\b> and C<\B>, don't work correctly.
 
 Never pass any regexp containing C<'(?i)'> on perl below 5.005.
 Pass C<'i'> modifier as the second argument.
-(On Perl 5.005 or better, C<'(?i)'> is allowed 
+(On Perl 5.005 or later, C<'(?i)'> is allowed 
 because C<'(?-i:RE)'> prevents it from wrong matching)
 
 e.g.
 
   match('ƒG', '(?i)ƒg') returns true on Perl below 5.005 (Wrong).
-  match('ƒG', '(?i)ƒg') returns false on Perl 5.005 or better (Good).
+  match('ƒG', '(?i)ƒg') returns false on Perl 5.005 or later (Good).
   match('ƒG', 'ƒg', 'i') returns false, ok.
   # The trail byte of 'ƒG' is 'G' and that of 'ƒg' is 'g';
 
