@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..8\n"; }
+BEGIN { $| = 1; print "1..9\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -173,3 +173,9 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
     ? "ok 8\n" : "not ok 8\n";
 }
 
+print 1
+  && '##‚è‚Ñ-#Ù#Ó-#ƒ“#ƒ‹[' eq
+    replace('‚©‚ª‚è‚Ñ-¶Ù¶ŞÓ-ƒJƒ“ƒKƒ‹[', '[[=‚©=]]', '#', 'g')
+  &&  match('“ú–{', '[[=“ú=]][[=–{=]]')
+  &&  match('P‚…r‚k', '^[[=p=]][[=‚d=]][[=‚’=]][[=L=]]$')
+   ? "ok 9\n" : "not ok 9\n";

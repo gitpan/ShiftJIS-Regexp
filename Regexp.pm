@@ -6,6 +6,12 @@ use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
 require Exporter;
 
+use vars qw(%Eq);
+use ShiftJIS::Regexp::Equiv qw(%Eq);
+
+$VERSION = '0.13';
+$PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
+
 @ISA = qw(Exporter);
 
 my @Re    = qw(re  mkclass  rechar);
@@ -20,9 +26,6 @@ my @Op    = qw(match replace);
 	split	=> \@Split,
 	all	=> [@Re, @Op, @Split],
 );
-
-$VERSION = '0.12';
-$PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 my $Msg_unm = $PACKAGE.' Unmatched [ character class';
 my $Msg_ilb = $PACKAGE.' Illegal byte in class (following [)';
@@ -274,8 +277,8 @@ sub re {
         croak $Msg_cod;
       }
       if(s/^\x5B(\^?)(\x5D?
-        (?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\x5Cc?[\x5C\x5D]
-        |\x5C?(?![\x5C\x5D])$Char
+        (?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\[=[^=]+=\]|\[=\\?==\]
+        |\x5Cc?[\x5C\x5D]|\x5C?(?![\x5C\x5D])$Char
         )*
       )\x5D//ox)
       {
@@ -517,8 +520,16 @@ sub mkclass {
         $tmp .= $1;
         next;
       }
+      if(s/^(\[=\\?[=\x2D\x5B\x5C]=\])//){
+        $tmp .= $1;
+        next;
+      }
+      if(s/^(\[\=)(?=[^=]+\=\])//){
+        $tmp .= $1;
+        next;
+      }
       if(s/^\\?\[// || s/^\\133// || s/^\\x5[bB]//){
-        $tmp .= '\\['; # prevent from confusion with [: :]
+        $tmp .= '\\['; # prevent from confusion with [: :], [= =].
         next;
       }
       if(s/^\\\\//  || s/^\\134// || s/^\\x5[cC]//){
@@ -574,6 +585,14 @@ sub mkclass {
         my $class = '\\' . ($1 ? 'P' : 'p') .'{' . $Class{$2} .'}';
         if(!defined $Re{$class}){croak sprintf $Msg_und, "[:$1$2:]"}
         push @res, $Re{$class};
+        next;
+      }
+      if(s/^\[=\\([=\x2D\x5B\x5C])=\]//){
+        push @res, defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
+        next;
+      }
+      if(s/^\[=([^=]+|=)=\]//){
+        push @res, defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
         next;
       }
       if(s/^(\\[dwsDWSjJ])//){
@@ -1163,6 +1182,25 @@ e.g. C<re('[\xA0-\xFF]')>, is croaked.
 
 Character classes that match non-Shift_JIS substring
 are not supported (use C<\C> or alternation).
+
+=item Character Equivalents
+
+Since the version 0.13,
+the POSIX character equivalent classes C<[=cc=]> are supported.
+e.g. C<[[=‚ =]]> is identical to C<[‚Ÿƒ@§‚ ƒA±]>;
+C<[[=P=]]> to C<[pP‚‚o]>; C<[[=4=]]> to C<[4‚S]>.
+
+As C<cc> in C<[=cc=]>, any character literal or meta chatacter
+(C<\xhh>, C<\x{hhhh}>) that belongs to the character equivalents can be used.
+e.g. C<[=‚ =]>, C<[=ƒA=]>, C<[=\x{82A0}=]>, C<[=\xB1=]>, etc.
+have identical meanings.
+
+C<[[=‚©=]]> matches C<'‚©'>, C<'ƒJ'>, C<'¶'>, C<'‚ª'>, C<'ƒK'>, C<'¶Þ'>, C<'ƒ•'> (C<'¶Þ'> is a two-character string, but one collation element, 
+C<HALFWIDTH FORM FOR KATAKANA LETTER GA>.
+
+C<[[===]]> matches C<EQUALS SIGN> or C<FULLWIDTH EQUALS SIGN>;
+C<[[=[=]]> matches C<LEFT SQUARE BRACKET> or C<FULLWIDTH LEFT SQUARE BRACKET>;
+C<[[=\=]]> matches C<YEN SIGN> or C<FULLWIDTH YEN SIGN>.
 
 =item Code embedded in regexp (Perl 5.005 or later)
 

@@ -3,6 +3,7 @@ Makefile.PL
 MANIFEST
 README
 Regexp.pm
+Regexp/Equiv.pm
 t/test.t
 t/cntrl.t
 t/split.t
