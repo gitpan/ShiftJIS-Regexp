@@ -4,13 +4,13 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
+$VERSION = '0.16';
+$PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
+
 require Exporter;
 
 use vars qw(%Eq);
 use ShiftJIS::Regexp::Equiv qw(%Eq);
-
-$VERSION = '0.14';
-$PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 @ISA = qw(Exporter);
 
@@ -18,14 +18,14 @@ my @Re    = qw(re  mkclass  rechar);
 my @Split = qw(jsplit splitchar splitspace);
 my @Op    = qw(match replace);
 
-@EXPORT      = ();
-@EXPORT_OK   = (@Re, @Op, @Split);
 %EXPORT_TAGS = (
-	re	=> \@Re,
-	op	=> \@Op,
-	split	=> \@Split,
-	all	=> [@Re, @Op, @Split],
+    "re"    => \@Re,
+    "op"    => \@Op,
+    "split" => \@Split,
+    "all"   => [@Re, @Op, @Split],
 );
+@EXPORT_OK   = @{ $EXPORT_TAGS{all} };
+@EXPORT      = ();
 
 my $Msg_unm = $PACKAGE.' Unmatched [ character class';
 my $Msg_ilb = $PACKAGE.' Illegal byte in class (following [)';
@@ -37,7 +37,14 @@ my $Msg_cod = $PACKAGE.' Sequence (?{...}) not terminated or not {}-balanced';
 
 my $SBC = '[\x00-\x7F\xA1-\xDF]';
 my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
-my $Char = '(?:' . $SBC . '|' . $DBC . ')';
+
+my $Char = "(?:$SBC|$DBC)";
+
+my $Apad = '(?:\A|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
+my $Gpad = '(?:\G|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
+my $GApad = '(?:\G\A|'
+  . '\G(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')+?|'
+  . '[\x00-\x3F\x7F]+?(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?)';
 
 my $Open = 5.005 > $] ? '(?:' : '(?-i:';
 
@@ -111,10 +118,10 @@ my %Re = (
 
   '\p{IsHankaku}' => '[\xA1-\xDF]',
   '\P{IsHankaku}' => $Open.'[\x00-\x7F]|' . $DBC . ')',
-  '\p{IsZenkaku}' => $Open. $DBC . ')',
-  '\P{IsZenkaku}' => $Open. $SBC . ')',
-  '\p{IsX0201}' => $Open. $SBC . ')',
-  '\P{IsX0201}' => $Open. $DBC . ')',
+  '\p{IsZenkaku}' => "$Open$DBC)",
+  '\P{IsZenkaku}' => "$Open$SBC)",
+  '\p{IsX0201}'   => "$Open$SBC)",
+  '\P{IsX0201}'   => "$Open$DBC)",
 
   '\p{IsX0208}' => $Open.'\x81[\x40-\x7E'
 		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
@@ -233,12 +240,13 @@ sub re {
   my($flag);
   my $pat = shift;
   my $mod = shift || '';
+  if($pat =~ s/^(\^|\\[AG]|)\(\?([a-zA-Z]+)\)/$1/){
+    $mod .= $2;
+  }
   my $s = $mod =~ /s/;
   my $m = $mod =~ /m/;
   my $x = $mod =~ /x/;
   my $h = $mod =~ /h/;
-
-  return $pat if $mod =~ /n/;
   if($mod =~ /o/ && defined $Cache{$pat}{$mod}){
     return $Cache{$pat}{$mod};
   }
@@ -373,7 +381,7 @@ sub re {
         croak $Msg_bsl;
         next;
       }
-      if(s/^\\?($Char)//){
+      if(s/^\\?($Char)//o){
         $res .= rechar($1, $mod);
         next;
       }
@@ -484,10 +492,10 @@ sub match {
   my $mod = $_[2] || '';
   my $pat = re($_[1], $mod);
   if($mod =~ /g/){
-    my $for = $mod =~ /z/ || '' =~ /$pat/ ? "(?:\\A|$Char+?)" : "$Char*?";
-    $str =~ /\G$for(?:$pat)/g;
+    my $for = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
+    $str =~ /$for(?:$pat)/g;
   } else {
-    $str =~ /^$Char*?(?:$pat)/;
+    $str =~ /$Apad(?:$pat)/;
   }
 }
 
@@ -497,18 +505,18 @@ sub replace {
   my $mod = $_[3] || '';
   my $pat = re($_[1], 'h'.$mod);
   if($mod =~ /g/){
-    my $for = $mod =~ /z/ || '' =~ /$pat/ ? "(?:\\A|$Char+?)" : "$Char*?";
+   my $for = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
     if(ref $str){
-      eval "\$\$str =~ s/\\G($for)(?:$pat)/\${1}$dst/g";
+      eval "\$\$str =~ s/($for)(?:$pat)/\${1}$dst/g";
     } else {
-      eval "\$str =~ s/\\G($for)(?:$pat)/\${1}$dst/g";
+      eval "\$str =~ s/($for)(?:$pat)/\${1}$dst/g";
       $str;
     }
   } else {
     if(ref $str){
-      eval "\$\$str =~ s/^($Char*?)(?:$pat)/\${1}$dst/";
+      eval "\$\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
     } else {
-      eval "\$str =~ s/^($Char*?)(?:$pat)/\${1}$dst/";
+      eval "\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
       $str;
     }
   }
@@ -572,6 +580,10 @@ sub mkclass {
         $tmp .= $1;
         next;
       }
+      if(s/^(\\[pP]\{[0-9A-Z_a-z]+\})//){ # prop
+        $tmp .= $1;
+        next;
+      }
       if(s/^\\?([\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])//){
         $tmp .= $1;
         next;
@@ -601,6 +613,19 @@ sub mkclass {
       }
       if(s/^(\\[dwsDWSjJ])//){
         push @res, $Re{ $1 };
+        next;
+      }
+      if(s/^\\([pP])\{([0-9A-Z_a-z]+)\}//){ # prop
+        my($p, $key) = ($1,$2);
+        if(defined $Re{ "\\$p\{$key\}" }){
+          push @res, $Re{ "\\$p\{$key\}" }
+        } elsif(defined $Re{ "\\$p\{Is$key\}"}){
+          push @res, $Re{ "\\$p\{Is$key\}" }
+        } elsif(defined $Re{ "\\$p\{In$key\}"}){
+          push @res, $Re{ "\\$p\{In$key\}" }
+        } else {
+          croak sprintf $Msg_und, "\\$p\{$key\}";
+        }
         next;
       }
       if(s/^
@@ -838,8 +863,8 @@ sub splitspace{
   my($str, $lim) = @_;
   defined $lim && 0 < $lim 
     ? do{
-        (ref $str ? $$str : $str) =~ s/^(?:[\ \n\r\t\f]|\x81\x40)+//;
-        jsplit('(?:[\ \n\r\t\f]|\x81\x40)+', $str, $lim)
+        (ref $str ? $$str : $str) =~ s/^(?:[ \n\r\t\f]|\x81\x40)+//;
+        jsplit('(?:[ \n\r\t\f]|\x81\x40)+', $str, $lim)
       }
     : split(' ', spaceZ2H($str), $lim);
 }
@@ -864,7 +889,7 @@ __END__
 
 =head1 NAME
 
-ShiftJIS::Regexp - Shift_JIS-oriented regexps in the byte-oriented perl
+ShiftJIS::Regexp - Shift_JIS-oriented regexps on the byte-oriented perl
 
 =head1 SYNOPSIS
 
@@ -877,13 +902,13 @@ ShiftJIS::Regexp - Shift_JIS-oriented regexps in the byte-oriented perl
 =head1 DESCRIPTION
 
 This module provides some functions to use Shift_JIS-oriented regexps
-in the byte-oriented perl.
+on the byte-oriented perl.
 
 The legal Shift_JIS character in this module must match the following regexp:
 
     [\x00-\x7F\xA1-\xDF]|[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]
 
-=head2 FUNCTIONS
+=head2 Functions
 
 =over 4
 
@@ -897,10 +922,9 @@ C<PATTERN> is specified as a string.
 
 C<MODIFIER> is specified as a string.
 
-     i  do case-insensitive pattern matching (only for ascii alphabets)
-     I  do case-insensitive pattern matching
-        (greek, cyrillic, fullwidth latin)
-     j  do hiragana-katakana-insensitive pattern matching
+     i  case-insensitive pattern (only for ascii alphabets)
+     I  case-insensitive pattern (greek, cyrillic, fullwidth latin)
+     j  hiragana-katakana-insensitive pattern
 
      s  treat string as single line
      m  treat string as multiple lines
@@ -937,10 +961,9 @@ C<PATTERN> is specified as a string.
 
 C<MODIFIER> is specified as a string.
 
-     i  do case-insensitive pattern matching (only for ascii alphabets)
-     I  do case-insensitive pattern matching
-        (greek, cyrillic, fullwidth latin)
-     j  do hiragana-katakana-insensitive pattern matching
+     i  case-insensitive pattern (only for ascii alphabets)
+     I  case-insensitive pattern (greek, cyrillic, fullwidth latin)
+     j  hiragana-katakana-insensitive pattern
 
      s  treat string as single line
      m  treat string as multiple lines
@@ -970,10 +993,9 @@ returns the substituted string and the specified string is unaffected.
 
 C<MODIFIER> is specified as a string.
 
-     i  do case-insensitive pattern matching (only for ascii alphabets)
-     I  do case-insensitive pattern matching
-        (greek, cyrillic, fullwidth latin)
-     j  do hiragana-katakana-insensitive pattern matching
+     i  case-insensitive pattern (only for ascii alphabets)
+     I  case-insensitive pattern (greek, cyrillic, fullwidth latin)
+     j  hiragana-katakana-insensitive pattern
 
      s  treat string as single line  treat string as single line
      m  treat string as multiple lines
@@ -1007,6 +1029,9 @@ specify an arrayref of C<[PATTERN, MODIFIER]> as the first argument.
 
     jsplit([ 'あ', 'jo' ], '01234あいうえおアイウエオ');
 
+Or you can say (see L<Embedded Modifiers>):
+
+    jsplit('(?jo)あ', '01234あいうえおアイウエオ');
 
 C<MODIFIER> is specified as a string.
 
@@ -1039,22 +1064,22 @@ and returns the array given by split of the specified string into characters.
 
 =back
 
-=head2 REGEXPS
+=head2 Regexps
 
    regexp          meaning
 
    ^               match the start of the string
                    match the start of any line with 'm' modifier
 
-   $               match the end of the string
+   $               match the end of the string, or before newline at the end
                    match the end of any line with 'm' modifier
 
    .               match any character except \n
                    match any character with 's' modifier
 
    \A              only at beginning of string
-   \Z              at end of string, or before newline at the end
-   \z              only at end of string (eq. '(?!\n)\Z')
+   \Z              at the end of the string, or before newline at the end
+   \z              only at the end of the string (eq. '(?!\n)\Z')
 
    \C              match a single C char (octet), i.e. [\0-\xFF] in perl.
    \j              match any character, i.e. [\0-\x{FCFC}] in this module.
@@ -1169,9 +1194,7 @@ and returns the array given by split of the specified string into characters.
    * Character classes marked with <!> contain undefined codepoints
      in JIS (JIS X 0201 or JIS X 0208).
 
-=over 4
-
-=item Character class
+=head2 Character class
 
 Ranges in character class are supported. 
 
@@ -1187,7 +1210,7 @@ e.g. C<re('[\xA0-\xFF]')>, is croaked.
 Character classes that match non-Shift_JIS substring
 are not supported (use C<\C> or alternation).
 
-=item Character equivalents
+=head2 Character Equivalences
 
 Since the version 0.13,
 the POSIX character equivalent classes C<[=cc=]> are supported.
@@ -1212,7 +1235,7 @@ C<[[=]=]]> matches C<RIGHT SQUARE BRACKET> or
 C<FULLWIDTH RIGHT SQUARE BRACKET>;
 C<[[=\=]]> matches C<YEN SIGN> or C<FULLWIDTH YEN SIGN>.
 
-=item Code embedded in regexp (Perl 5.005 or later)
+=head2 Code Embedded in a Regexp (Perl 5.005 or later)
 
 Parsing C<(?{ ... })> or C<(??{ ... })> assertions is carried out
 without any special care of double-byte characters.
@@ -1241,7 +1264,20 @@ Use them via C<re()> function inside your scope.
   /$regex/;
   print $::res; # 5
 
-=back
+=head2 Embedded Modifiers
+
+Since version 0.15, embedded modifiers are extended.
+
+An embedded modifier, C<(?iIjsmxo)>,
+that appears at the beginning of the 'regexp' or that follows
+one of regexps C<^>, C<\A>, or C<\G> at the beginning of the 'regexp'
+is allowed to contain C<I>, C<j>, C<o> modifiers.
+
+  e.g. (?sm)pattern  ^(?i)pattern  \G(?j)pattern  \A(?ijo)pattern
+
+And C<match('エ', '(?i)ト')> returns false (Good result)
+even on Perl below 5.005,
+since it works like C<match('エ', 'ト', 'i')>.
 
 =head1 CAVEATS
 
@@ -1300,6 +1336,8 @@ e.g.
   match('エ', 'ト', 'i') returns false, ok.
   # The trail byte of 'エ' is 'G' and that of 'ト' is 'g';
 
+(see also L<Embedded Modifiers>)
+
 The C<i>, C<I> and C<j> modifiers are invalid
  to C<\p{}>, C<\P{}>, and POSIX C<[: :]>.
  (e.g. C<\p{IsLower}>, C<[:lower:]>, etc).
@@ -1324,6 +1362,12 @@ Tomoyuki SADAHIRO
 
 =head1 SEE ALSO
 
-perl(1), ShiftJIS::String
+=over 4
+
+=item L<ShiftJIS::String>
+
+=item L<ShiftJIS::Collate>
+
+=back
 
 =cut

@@ -1,5 +1,11 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.16  Sat Sep 15 20:32:45 2001
+    - \p{ }, \P{ } in character classes.
+
+0.15  Thu Aug 30 22:47:31 2001
+    - extended embedded modifiers at the beginning the regexp
+
 0.14  Sun Jul 22 22:07:58 2001
     - change test.t ([:print:] is not tested).
 

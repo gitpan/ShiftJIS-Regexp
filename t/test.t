@@ -3,10 +3,7 @@
 
 ######################### We start with some black magic to print on failure.
 
-# Change 1..1 below to 1..last_test_to_print .
-# (It may become useful if the test is moved to ./t subdirectory.)
-
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "1..10\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -19,6 +16,8 @@ print !match("Perl", "perl")
    &&  match("PErl", '^perl$', 'i')
    &&  match("Perl講習", '^perl講習$', 'i')
    && !match("Perl講縮", '^perl講習$', 'i')
+   && !match('エ', 'ト', 'i')
+   && !match('エ', '(?i)ト')
    &&
  ( $] < 5.005 || 
        match("Perl講習", '^(?i:perl講習)$')
@@ -28,10 +27,16 @@ print !match("Perl", "perl")
    && !match("ヤカン", "ポット")
    && !match("ヤカン", "や[か]ん")
    &&  match("ヤカン", "や[か]ん", 'j')
-   &&  match("らくだ本", "ラくだ", 'j')
+   &&  match('らくだ本', 'ラくだ', 'j')
+   &&  match('らくだ本', '(?j)ラくだ')
+   &&  match('らくだ本', '^(?j)ラくだ')
+   &&  match('らくだ本', '\A(?j)ラくだ')
+   &&  match('らくだ本', '\G(?j)ラくだ')
    &&  match("かゞり火", "カヾ", 'j')
+   &&  match("かゞり火", "(?j)カヾ")
    &&  match("これはＰｅｒｌ", "ｐｅｒｌ", 'I')
    &&  match("ΠεΡλ", "περλ", 'I')
+   &&  match("ΠεΡλ", "(?I)περλ", 'j')
    &&  match('座標表示', qw/\表 /)
    && !match('＝@＝@ ==@', '　')
    &&  match('あ', '')
@@ -41,10 +46,16 @@ print !match("Perl", "perl")
    &&  join('', match("あABCD", '(^\J\C)')) eq "あA"
    &&  join('', match("\xffあ\xe0", '(^\C\J)')) eq "\xffあ"
    &&  match('Aaあアｱ亜', '^\j{6}$')
+   &&  match('Aaあアｱ亜', '^\j{6}$', 's')
+   &&  match('Aaあアｱ亜', '^\j{6}$', 'm')
+   &&  match('Aaあアｱ亜'."\n", '^\j{6}$')
+   &&  match('Aaあアｱ亜'."\n", '^\j{6}$', 's')
+   &&  match('Aaあアｱ亜'."\n", '^\j{6}$', 'm')
    &&  match('表示', <<'HERE', 'x')
 ^表 .$
 HERE
-    ? "ok 2\n" : "not ok 2\n";
+    ? "ok" : "not ok", " 2\n";
+
 print  match('\　', '　$')
    && !match('\　', '^　$')
    &&  match('　', '^\　$')
@@ -54,10 +65,12 @@ print  match('\　', '　$')
    &&  match(' ',  '^\x20$')
    &&  match('  ',  '^ \040	\ $	 ','x')
    && !match("a b",  'a b', 'x')
+   &&  match("ab",  'a b', 'x')
+   &&  match("ab",  '(?iIjx)  a  b  ')
    &&  match("a b",  'a\ b', 'x')
    &&  match("a b",  'a[ ]b', 'x')
    &&  match("\0",  '^\0$')
-    ? "ok 3\n" : "not ok 3\n";
+    ? "ok" : "not ok", " 3\n";
 
 print  match('--\\--', '\\\\')
    &&  match('あいううう', '^..う{3}$')
@@ -72,11 +85,11 @@ print  match('--\\--', '\\\\')
    &&  match("あいう09", '^\p{Hiragana}{3}\p{Digit}{2}$')
    &&
  ( $] < 5.005 || match "あお１２", '(?<=\p{InHiragana}{2})\p{IsDigit}{2}') 
-    ? "ok 4\n" : "not ok 4\n";
+    ? "ok" : "not ok", " 4\n";
 
 my $str = "!あい--うえお00";
 
-print "!＃＃--＃＃＃00" eq replace($str, '\p{Hiragana}', '\x{8194}', 'g')
+print "!＃＃--＃＃＃00" eq replace($str, '[\p{Hiragana}]', '\x{8194}', 'g')
    && "!＃い--うえお00" eq replace($str, '\p{InHiragana}', '＃')
    && "あ\\0い\\0あい" eq replace("あ\0い\0あい",'\0', '\\\\0', 'g')
    && "!あいあい--うえおうえお00"
@@ -94,14 +107,7 @@ print "!＃＃--＃＃＃00" eq replace($str, '\p{Hiragana}', '\x{8194}', 'g')
    && '試試試試E試試試試E' eq replace('試試試試E試試試試E', '殺', 'E', 'g')
    && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
    && "a bDC123" eq replace("a b\n123", '$\j', "DC", 'm')
-   && 
- ( $] < 5.005 || 
-      "#\n#\n#a\n#bb\n#\n#cc\n#dd"
-	 eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
-   && 'ZアイウエZアZアイウZア泣A'
-	 eq  replace('アイウエアアイウア泣A', '(?=ア)', 'Z', 'gz')
- )
-    ? "ok 5\n" : "not ok 5\n";
+    ? "ok" : "not ok", " 5\n";
 
 print 'あ:いう:えおメ^' eq join(':', jsplit('／', 'あ／いう／えおメ^'))
    && 'あ:いう＝@:えお　メ^' 
@@ -112,7 +118,11 @@ print 'あ:いう:えおメ^' eq join(':', jsplit('／', 'あ／いう／えおメ^'))
 	eq '頭に-マード；キャ|-ロン アポロ'
    && join('-:-', jsplit('(／)', 'Perl／プログラム／パスワード'))
 	eq 'Perl-:-／-:-プログラム-:-／-:-パスワード'
-    ? "ok 6\n" : "not ok 6\n";
+   && join('-:-', jsplit('(?j)(マツ)', 'まつしまやああまつしまやまつしまや'))
+	eq '-:-まつ-:-しまやああ-:-まつ-:-しまや-:-まつ-:-しまや'
+   && join('-:-', jsplit('(?j)ヲ+', 'をを、これをみろ'))
+	eq '-:-、これ-:-みろ'
+    ? "ok" : "not ok", " 6\n";
 
 {
   local $^W = 0;
@@ -131,17 +141,7 @@ print 'あ:いう:えおメ^' eq join(':', jsplit('／', 'あ／いう／えおメ^'))
     $str =~ s/$re/ｶ/g;
     $ng++ if $sjs ne $str;
   }
-  if($] >= 5.006) { # [[:print:]] is gone out.
-    for $re(qw/ [[:upper:]] [[:lower:]] [[:digit:]] [[:alpha:]] [[:alnum:]]
-             \C [[:punct:]] [[:graph:]] [[:space:]] [[:cntrl:]] [[:ascii:]]/
-    ){
-      my $str = $asc;
-      my $sjs = replace($str, $re, 'ｶ', 'g');
-      $str =~ s/$re/ｶ/g;
-      $ng++, print "$re\n" if $sjs ne $str;
-    }
-  }
-  print !$ng ? "ok 7\n" : "not ok 7\n";
+  print !$ng ? "ok" : "not ok", " 7\n";
 }
 
 {
@@ -170,7 +170,7 @@ print 'あ:いう:えおメ^' eq join(':', jsplit('／', 'あ／いう／えおメ^'))
        eq replace($perl, '[ｐeあＬ]', '＃', 'iIjg')
    && "＃ｅｒｌＰＥＲ＃p＃rlP＃RLぱ＃るパ＃ル"
        eq replace($perl, '[ｐeあＬ]', '＃', 'ijg')
-    ? "ok 8\n" : "not ok 8\n";
+    ? "ok" : "not ok", " 8\n";
 }
 
 print 1
@@ -180,4 +180,15 @@ print 1
   &&  match('PｅrＬ', '^[[=p=]][[=Ｅ=]][[=ｒ=]][[=L=]]$')
   &&  match('[a]', '^[[=[=]][[=\x41=]][[=]=]]$')
   &&  match('-［Ａ］', '.[[=[=]][[=\x61=]][[=]=]]$')
-   ? "ok 9\n" : "not ok 9\n";
+   ? "ok" : "not ok", " 9\n";
+
+print $] < 5.005 ||
+ ( 
+   "#\n#\n#a\n#bb\n#\n#cc\n#dd"
+      eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
+   && 'ZアイウエZアZアイウZア泣A'
+      eq replace('アイウエアアイウア泣A', '(?=ア)', 'Z', 'gz')
+   && 'Z1Z2Z3Z1Z2Z3Z'
+      eq replace('0123000123', '0*', 'Z', 'g')
+ )
+   ? "ok" : "not ok", " 10\n";
