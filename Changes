@@ -1,5 +1,14 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.21  Sat Dec 08 00:09:52 2001
+    - modifications breaking backward compatibility.
+      \pB is a short form for \p{blank}, not for \p{Boxdrawing}.
+      \p{Space}, \pS, and [:space:] include VT.
+      \p{Cntrl}, \pC, and [:cntrl:] include DEL.
+      \p{Graph}, \pG, and [:graph:] exclude unassigned codepoints on JIS.
+      \p{Print}, \pT, and [:print:] exclude unassigned codepoints on JIS
+          and whitespace control characters.
+
 0.20  Sat Nov 24 13:30:18 2001
     - modify documentation (about \p{IsProp} and \p{InProp})
 

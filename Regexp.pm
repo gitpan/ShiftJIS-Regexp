@@ -4,7 +4,7 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 require Exporter;
@@ -95,8 +95,13 @@ my %Re = (
 		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
 		. '|\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC]'. $Close,
 
-  '\p{space}' => $Open.'[\x09\x0A\x0C\x0D\x20]|\x81\x40'.$Close,
-  '\P{space}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]'
+  '\p{blank}' => $Open.'[\x09\x20]|\x81\x40'.$Close,
+  '\P{blank}' => $Open.'[\x00-\x08\x0A-\x1F\x21-\x7F\xA1-\xDF]'
+		. '|\x81[\x41-\x7E\x80-\xFC]'
+		. '|[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'. $Close,
+
+  '\p{space}' => $Open.'[\x09-\x0D\x20]|\x81\x40'.$Close,
+  '\P{space}' => $Open.'[\x00-\x08\x0E-\x1F\x21-\x7F\xA1-\xDF]'
 		. '|\x81[\x41-\x7E\x80-\xFC]'
 		. '|[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'. $Close,
 
@@ -108,15 +113,48 @@ my %Re = (
 		. '\xE9-\xEF\xF8-\xFB]|\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]'
 		. '|[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'. $Close,
 
-  '\p{graph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]'
-		. '|[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'.$Close,
-  '\P{graph}' => $Open.'[\x00-\x20\x7F]|\x81\x40'.$Close,
+  '\p{graph}'   => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E'
+		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
+		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
+		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
+		. '\x84[\x40-\x60\x70-\x7E\x80-\x91\x9F-\xBE]|'
+		. '\x88[\x9F-\xFC]|\x98[\x40-\x72\x9F-\xFC]|'
+		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
+		. '\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
 
-  '\p{print}' => $Open.'[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' .$DBC.$Close,
-  '\P{print}' => '[\x00-\x08\x0B\x0E-\x1F\x7F]',
+  '\P{graph}'   => $Open.'[\x00-\x20\x7F]|'
+		. '\x81[\x40\xAD-\xB7\xC0-\xC7\xCF-\xD9\xE9-\xEF\xF8-\xFB]|'
+		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
+		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
+		. '\x84[\x61-\x6F\x92-\x9E\xBF-\xFC]|'
+		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
+		. '\xEA[\xA5-\xFC]'
+		.$Close,
 
-  '\p{cntrl}' => '[\x00-\x1F]',
-  '\P{cntrl}' => $Open.'[\x20-\x7F\xA1-\xDF]|' .$DBC.$Close,
+  '\p{print}'   => $Open.'[\x20-\x7E\xA1-\xDF]|\x81[\x40-\x7E'
+		. '\x80-\xAC\xB8-\xBF\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|'
+		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
+		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
+		. '\x84[\x40-\x60\x70-\x7E\x80-\x91\x9F-\xBE]|'
+		. '\x88[\x9F-\xFC]|\x98[\x40-\x72\x9F-\xFC]|'
+		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
+		. '\xEA[\x40-\x7E\x80-\xA4]'
+		. $Close,
+
+  '\P{print}'   => $Open.'[\x00-\x1F\x7F]|'
+		. '\x81[\xAD-\xB7\xC0-\xC7\xCF-\xD9\xE9-\xEF\xF8-\xFB]|'
+		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
+		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
+		. '\x84[\x61-\x6F\x92-\x9E\xBF-\xFC]|'
+		. '[\x85-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
+		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
+		. '\xEA[\xA5-\xFC]'
+		. $Close,
+
+  '\p{cntrl}' => '[\x00-\x1F\x7F]',
+  '\P{cntrl}' => $Open.'[\x20-\x7E\xA1-\xDF]|' .$DBC.$Close,
 
   '\p{ascii}' => '[\x00-\x7F]',
   '\P{ascii}' => $Open.'[\xA1-\xDF]|' .$DBC.$Close,
@@ -141,7 +179,7 @@ my %Re = (
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
 		. '\xEA[\xA5-\xFC]'.$Close,
 
-  '\p{hankaku}' => '[\xA1-\xDF]',
+  '\p{hankaku}' => $Open.'[\xA1-\xDF]'.$Close,
   '\P{hankaku}' => $Open.'[\x00-\x7F]|' .$DBC.$Close,
   '\p{zenkaku}' => "$Open$DBC$Close",
   '\P{zenkaku}' => "$Open$SBC$Close",
@@ -218,7 +256,7 @@ my %Re = (
 		. '\x83[\x40-\x7E\x80-\x9e\xb7-\xbe\xd7-\xFC]|'
 		. '\x84[\x61-\x6f\x92-\xFC]'. $Close,
 
-  '\p{halfkana}' => '[\xA6-\xDF]',
+  '\p{halfkana}' => $Open.'[\xA6-\xDF]'.$Close,
   '\P{halfkana}' => $Open.'[\x00-\x7F\xA1-\xA5]|' .$DBC.$Close,
 
   '\p{hiragana}' => $Open.'\x82[\x9F-\xF1]|\x81[\x4A\x4B\x54\x55]'.$Close,
@@ -323,12 +361,16 @@ my %AbbrevProp = qw(
   U  upper
   L  lower
   A  alpha
+  Q  alnum
   W  word
   P  punct
   G  graph
+  T  print
   S  space
+  B  blank
   C  cntrl
   R  roman
+  Y  hankaku
   Z  zenkaku
   J  jis
   N  nec
@@ -341,7 +383,6 @@ my %AbbrevProp = qw(
   0  kanji0
   1  kanji1
   2  kanji2
-  B  boxdrawing
 );
 
 #
@@ -797,7 +838,11 @@ sub dst
         $res .= '\\x' . $1 . '\\x' . $2;
         next;
       }
-      if(s/^\\([0A-Za-z])//){
+      if(s/^\\0//){
+        $res .='\\x00';
+        next;
+      }
+      if(s/^\\([A-Za-z])//){
         $res .= '\\'. $1;
         next;
       }
@@ -1330,20 +1375,19 @@ and returns the array given by split of the specified string into characters.
    \p{Upper}      \pU        [[:upper:]]       [A-ZÇ`-Çy]
    \p{Lower}      \pL        [[:lower:]]       [a-zÇÅ-Çö]
    \p{Alpha}      \pA        [[:alpha:]]       [A-Za-zÇ`-ÇyÇÅ-Çö]
-   \p{Alnum}     [\pA\pD]    [[:alnum:]]       [0-9A-Za-zÇO-ÇXÇ`-ÇyÇÅ-Çö]
+   \p{Alnum}      \pQ        [[:alnum:]]       [0-9A-Za-zÇO-ÇXÇ`-ÇyÇÅ-Çö]
 
    \p{Word}       \pW        [[:word:]]        [_\p{Digit}\p{European}\p{Kana}\p{Kanji}]
-
    \p{Punct}      \pP        [[:punct:]]       [!-/:-@[-`{-~°-•ÅA-ÅIÅL-ÅQÅ\-Å¨Å∏-ÅøÅ»-ÅŒÅ⁄-ÅËÅ-Å˜Å¸Ñü-Ñæ]
-
-   \p{Space}      \pS        [[:space:]]       [\t\n\r\f\x20\x{8140}]
-   \p{Graph}      \pG        [[:graph:]]       [^\0-\x20\x7F\x{8140}]
-   \p{Print}     [\pS\pG]    [[:print:]]       [^\0-\x08\x0B\x0E-\x1F\x7F]
-   \p{Cntrl}      \pC        [[:cntrl:]]       [\x00-\x1F]
+   \p{Graph}      \pG        [[:graph:]]       [\p{Word}\p{Punct}]
+   \p{Blank}      \pB        [[:blank:]]       [\x20\x{8140}\t]
+   \p{Print}      \pT        [[:print:]]       [\x20\x{8140}\p{Graph}]
+   \p{Space}      \pS        [[:space:]]       [\x20\x{8140}\x09-\x0D]
+   \p{Cntrl}      \pC        [[:cntrl:]]       [\x00-\x1F\x7F]
 
    \p{Roman}      \pR        [[:roman:]]       [\x00-\x7F]
    \p{ASCII}                 [[:ascii:]]       [\p{Roman}]
-   \p{Hankaku}               [[:hankaku:]]     [\xA1-\xDF]
+   \p{Hankaku}    \pY        [[:hankaku:]]     [\xA1-\xDF]
    \p{Zenkaku}    \pZ        [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
 
    \p{X0201}                 [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
@@ -1370,13 +1414,11 @@ and returns the array given by split of the specified string into characters.
    \p{Kanji1}     \p1        [[:kanji1:]]      [àü-òr]
    \p{Kanji2}     \p2        [[:kanji2:]]      [òü-Í§]
    \p{Kanji}    [\p0\p1\p2]  [[:kanji:]]       [ÅV-ÅZàü-òròü-Í§]
-   \p{BoxDrawing} \pB        [[:boxdrawing:]]  [Ñü-Ñæ]
+   \p{BoxDrawing}            [[:boxdrawing:]]  [Ñü-Ñæ]
 
 =over 4
 
 =item *
-
-=over 4
 
 C<\p{NEC}> matches an NEC special character 
 or an NEC-selected IBM extended character.
@@ -1392,8 +1434,6 @@ C<\p{Kanji0}> matches a kanji of the minimum kanji class of JIS X 4061;
 C<\p{Kanji1}>, of the level 1 kanji of JIS X 0208;
 C<\p{Kanji2}>, of the level 2 kanji of JIS X 0208;
 C<\p{Kanji}>, of the basic kanji class of JIS X 4061.
-
-=back
 
 =item *
 
@@ -1417,7 +1457,7 @@ Prefixes C<Is> and C<In> for C<\p{Prop}> and C<\P{Prop}>
 (e.g. C<\p{IsProp}>, C<\P{InProp}>, etc.) are optional.
 But C<\p{isProp}>, C<\p{ISProp}>, etc. are not ok,
 as C<Is> and C<In> are B<not> case-insensitive.
-Using of C<Is> and C<In> is deplicated since they may conflict
+Using of C<Is> and C<In> is deprecated since they may conflict
 with a property name beginning with C<'is'> or C<'in'> in future.
 
 =back
