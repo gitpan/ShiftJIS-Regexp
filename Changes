@@ -1,5 +1,11 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.23  Mon Dec 31 13:07:52 2001
+    - When jsplit() gets undef as PATTERN,
+      splits the string on whiltespace characters
+      equivalently to splitspace().
+    - prototypes: all parameters are enforced in scalar context.
+
 0.22  Sun Dec 09 13:20:02 2001
     - add \p{Halfwidth}, \p{Fullwidth}, etc.
 

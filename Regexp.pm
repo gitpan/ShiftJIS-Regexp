@@ -4,7 +4,7 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.22';
+$VERSION = '0.23';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 require Exporter;
@@ -37,8 +37,6 @@ my $ErrInvalMch = $PACKAGE.' Invalid Metacharacter "%s"';
 my $ErrInvalHex = $PACKAGE.' Invalid Hexadecimal %s following "\x"';
 my $ErrInvalFlw = $PACKAGE.' Invalid byte "\\x%02x" following "%s" (only "%s" allowed)';
 
-
-
 my $SBC   = '[\x00-\x7F\xA1-\xDF]';
 my $Trail = '[\x40-\x7E\x80-\xFC]';
 my $DBC   = '[\x81-\x9F\xE0-\xFC]'. $Trail;
@@ -54,6 +52,10 @@ my $Open = 5.005 > $] ? '(?:' : '(?-i:';
 my $Close = ')';
 
 my %Re = (
+  '\p{apad}'  => $Apad,
+  '\p{gpad}'  => $Gpad,
+  '\p{gapad}' => $GApad,
+
   '\C' => '[\x00-\xFF]',
   '\j' => $Char,
   '\J' => "(?:(?!\\n)$Char)",
@@ -389,33 +391,33 @@ my %AbbrevProp = qw(
 # _parse_prop('p' or 'P', ref to string)
 # returning '\p{digit}' etc.
 #
-sub _parse_prop {
-  my($key, $rev);
-  my $p = shift;
-  for(${ $_[0] }) {
-    if(s/^\{//) {
-      $rev = s/^\^// ? '^' : '';
-      s/^I[sn]//; # XXX, deprecated
-      if(s/^([0-9A-Za-z]+)\}//){
-        $key = lc $1;
-      } elsif(s/^([0-9A-Za-z]*(?![0-9A-Za-z])$Char)//o){
-        croak sprintf($ErrNotAlnum, "\\$p\{$rev$1");
-      } else {
-        croak sprintf($ErrUnTermin, "\\$p\{$_}", '}');
-      }
-    } else {
-      $rev = s/^\^// ? '^' : '';
-      if(s/^([\x21-\x7e])//){
-        $key = $AbbrevProp{uc $1} || $1;
-      } elsif(s/^($Char)//o){
-        croak sprintf($ErrNotASCII, "\\$p$rev$1");
-      } else {
-        croak sprintf($ErrUnTermin, "\\$p^", '');
-      }
+sub _parse_prop ($$) {
+    my($key, $rev);
+    my $p = shift;
+    for (${ $_[0] }) {
+	if (s/^\{//) {
+	    $rev = s/^\^// ? '^' : '';
+	    s/^I[sn]//; # XXX, deprecated
+	    if (s/^([0-9A-Za-z]+)\}//) {
+		$key = lc $1;
+	    } elsif(s/^([0-9A-Za-z]*(?![0-9A-Za-z])$Char)//o) {
+		croak sprintf($ErrNotAlnum, "\\$p\{$rev$1");
+	    } else {
+		croak sprintf($ErrUnTermin, "\\$p\{$_}", '}');
+	    }
+	} else {
+	    $rev = s/^\^// ? '^' : '';
+	    if (s/^([\x21-\x7e])//) {
+		$key = $AbbrevProp{uc $1} || $1;
+	    } elsif(s/^($Char)//o) {
+		croak sprintf($ErrNotASCII, "\\$p$rev$1");
+	    } else {
+		croak sprintf($ErrUnTermin, "\\$p^", '');
+	    }
+	}
     }
-  }
-  if($rev) { $p = $p eq 'p' ? 'P' : 'p' }
-  return "\\$p\{$key\}";
+    if ($rev) { $p = $p eq 'p' ? 'P' : 'p' }
+    return "\\$p\{$key\}";
 }
 
 #
@@ -423,351 +425,192 @@ sub _parse_prop {
 #   called after "[:" in a character class.
 #   returning '\p{digit}' etc.
 #
-sub _parse_posix {
-  my($key, $rev);
+sub _parse_posix ($) {
+    my($key, $rev);
 
-  for(${ $_[0] }) {
-    $rev = s/^\^// ? '^' : '';
-    if(s/^([0-9A-Za-z]+)\:\]//){
-      $key = lc $1;
-    } elsif(s/^([0-9A-Za-z]*(?![:])$Char)//o){
-      croak sprintf($ErrNotAlnum, "[:$rev$1");
-    } else {
-      croak sprintf($ErrUnTermin, "[:$rev$_", ":]");
+    for(${ $_[0] }) {
+	$rev = s/^\^// ? '^' : '';
+	if (s/^([0-9A-Za-z]+)\:\]//) {
+	    $key = lc $1;
+	} elsif(s/^([0-9A-Za-z]*(?![:])$Char)//o) {
+	    croak sprintf($ErrNotAlnum, "[:$rev$1");
+	} else {
+	   croak sprintf($ErrUnTermin, "[:$rev$_", ":]");
+	}
     }
-  }
-  return $rev ? "\\P\{$key\}" : "\\p\{$key\}";
+    return $rev ? "\\P\{$key\}" : "\\p\{$key\}";
 }
 
-#
-# _parse_literal(string)
-#   returning a literal.
-#
-sub _parse_literal {
-  my $str = shift;
-  my $ret = '';
-  while(length $str){
-    $ret .= _parse_char(\$str);
-  }
-  $ret;
-}
 
 
 #
 # _parse_char(ref to string)
 #   returning a single- or double-byte char.
 #
-sub _parse_char {
-  for(${ $_[0] }) {
-    if($_ eq '\\') {
-      croak sprintf($ErrBackTips);
+sub _parse_char ($) {
+    for (${ $_[0] }) {
+	if ($_ eq '\\') {
+	    croak sprintf($ErrBackTips);
+	}
+	if (s/^\\([0-7][0-7][0-7])//) {
+	    return chr(oct $1);
+	}
+	if (s/^\\x//) {
+	    if (s/^([0-9A-Fa-f][0-9A-Fa-f])//) {
+		return chr(hex $1);
+	    }
+	    if (s/^\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//) {
+		return chr(hex $1) . chr(hex $2);
+	    }
+	    if (length) {
+		croak sprintf($ErrInvalHex, $_);
+	    } else {
+		croak sprintf($ErrUnTermin, '\x{$_', '}');
+	    }
+	}
+	if (s/^\\c//) {
+	    if (s/([\x00-\x7F])//) {
+		return chr( ord(uc $1) ^ 64 );
+	    }
+	    if (length) {
+		croak sprintf($ErrInvalFlw, ord, '\c', '[\x00-\x7F]');
+	    } else {
+		croak sprintf($ErrUnTermin, '\c');
+	    }
+	}
+	if (s/^\\a//) { return "\a" }
+	if (s/^\\b//) { return "\b" }
+	if (s/^\\e//) { return "\e" }
+	if (s/^\\f//) { return "\f" }
+	if (s/^\\n//) { return "\n" }
+	if (s/^\\r//) { return "\r" }
+	if (s/^\\t//) { return "\t" }
+	if (s/^\\0//) { return "\0" }
+	if (s/^\\([0-9A-Za-z])//) {
+	    croak sprintf($ErrInvalMch, "\\$1");
+	}
+	if (s/^\\?($Char)//o) { return $1 }
+	croak sprintf($ErrOddTrail, ord);
     }
-    if(s/^\\([0-7][0-7][0-7])//) {
-      return chr(oct $1);
-    }
-    if(s/^\\x//) {
-      if(s/^([0-9A-Fa-f][0-9A-Fa-f])//) {
-        return chr(hex $1);
-      }
-      if(s/^\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
-        return chr(hex $1) . chr(hex $2);
-      }
-      if(length) {
-        croak sprintf($ErrInvalHex, $_);
-      } else {
-        croak sprintf($ErrUnTermin, '\x{$_', '}');
-      }
-    }
-    if(s/^\\c//) {
-      if(s/([\x00-\x7F])//) {
-        return chr( ord(uc $1) ^ 64 );
-      }
-      if(length) {
-        croak sprintf($ErrInvalFlw, ord, '\c', '[\x00-\x7F]');
-      } else {
-        croak sprintf($ErrUnTermin, '\c');
-      }
-    }
-    if(s/^\\a//) { return "\a" }
-    if(s/^\\b//) { return "\b" }
-    if(s/^\\e//) { return "\e" }
-    if(s/^\\f//) { return "\f" }
-    if(s/^\\n//) { return "\n" }
-    if(s/^\\r//) { return "\r" }
-    if(s/^\\t//) { return "\t" }
-    if(s/^\\0//) { return "\0" }
-    if(s/^\\([0-9A-Za-z])//){
-      croak sprintf($ErrInvalMch, "\\$1");
-    }
-    if(s/^\\?($Char)//o) { return $1 }
-    croak sprintf($ErrOddTrail, ord);
-  }
 }
 
 
+#
+# _parse_literal(string)
+#   returning a literal.
+#
+sub _parse_literal ($) {
+    my $str = shift;
+    my $ret = '';
+    $ret .= _parse_char(\$str) while length $str;
+    return $ret;
+}
 
 #
 # _parse_class(ref to string, mode)
 #   called after "[" at the beginning of a character class.
 #   returning a byte-oriented regexp.
 #
-sub _parse_class {
-  my(@re, $subclass);
-  my $mod = $_[1] || '';
-  my $state = 0; # enum: initial, char, range, subclass, last;
+sub _parse_class ($;$) {
+    my(@re, $subclass);
+    my $mod = $_[1] || '';
+    my $state = 0; # enum: initial, char, range, subclass, last;
 
-  for(${ $_[0] }) {
-    while(length) {
-      if(s/^\]//) {
-        if(@re) {
-          if($state == 1) {
-            push @re, rechar(pop(@re), $mod);
-          } elsif($state == 2) {
-            push @re, rechar(pop(@re), $mod);
-            push @re, rechar('-', $mod);
-          }
-        } else {
-          push(@re, ']');
-    
-      $state = 1;
-          next;
-        }
-        $state = 4;
-        last;
-      }
+    for (${ $_[0] }) {
+	while (length) {
+	    if (s/^\]//) {
+		if (@re) {
+		    if ($state == 1) {
+			push @re, rechar(pop(@re), $mod);
+		    } elsif ($state == 2) {
+			push @re, rechar(pop(@re), $mod);
+			push @re, rechar('-', $mod);
+		    }
+		} else {
+		    push(@re, ']');
+		    $state = 1;
+		    next;
+		}
+		$state = 4;
+		last;
+	    }
+	    if (s/^\-//) {
+		if ($state == 0) {
+		    push(@re, '-');
+		    $state = 1;
+		} elsif ($state == 1) {
+		    $state = 2;
+		} elsif ($state == 2) {
+		    push @re, __expand(__ord(pop(@re)), __ord('-'), $mod);
+		    $state = 0;
+		} else {
+		    croak sprintf($ErrInvalRng, "-$_");
+		}
+		next;
+	    }
 
-      if(s/^\-//) {
-        if($state == 0) {
-          push @re, '-';
-          $state = 1;
-        } elsif($state == 1) {
-          $state = 2;
-        } elsif($state == 2) {
-          push @re, __expand(__ord(pop(@re)), __ord('-'), $mod);
-          $state = 0;
-        } else {
-          croak sprintf($ErrInvalRng, "-$_");
-        }
-        next;
-      }
+	    $subclass = undef;
+	    if (s/^\[\://) {
+		my $key = _parse_posix(\$_);
+		$subclass = defined $Re{$key} ? $Re{$key}
+		    : croak sprintf($ErrUndef, $key);
+	    } elsif(s/^\\([pP])//) { # prop
+		my $key = _parse_prop($1, \$_);
+		$subclass = defined $Re{$key} ? $Re{$key}
+		    : croak sprintf($ErrUndef, $key);
+	    } elsif(s/^(\\[dwsDWS])//) {
+		$subclass = $Re{ $1 };
+	    } elsif(s/^\[=\\?([\\=])=\]//) {
+		$subclass = defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
+	    } elsif(s/^\[=([^=]+)=\]//) {
+		my $lit = _parse_literal($1);
+	        $subclass = defined $Eq{$lit} ? $Eq{$lit} : rechar($lit,$mod);
+	    }
 
-      $subclass = undef;
-      if(s/^\[\://) {
-        my $key = _parse_posix(\$_);
-        $subclass = defined $Re{$key} ? $Re{$key}
-           :croak sprintf($ErrUndef, $key);
-      }
-      elsif(s/^\\([pP])//) { # prop
-        my $key = _parse_prop($1, \$_);
-        $subclass = defined $Re{$key} ? $Re{$key}
-           :croak sprintf($ErrUndef, $key);
-      }
-      elsif(s/^(\\[dwsDWS])//) {
-        $subclass = $Re{ $1 };
-      }
-      elsif(s/^\[=\\?([\\=])=\]//) {
-        $subclass = defined $Eq{$1} ? $Eq{$1} : rechar($1,$mod);
-      }
-      elsif(s/^\[=([^=]+)=\]//) {
-        my $lit = _parse_literal($1);
-        $subclass = defined $Eq{$lit} ? $Eq{$lit} : rechar($lit,$mod);
-      }
+	    if (defined $subclass) {
+		if ($state == 1) {
+		    push @re, rechar(pop(@re), $mod);
+		} elsif($state == 2) {
+		    croak sprintf($ErrInvalRng, "-$_");
+		}
+		push @re, $subclass;
+		$state = 3;
+		next;
+	    }
 
-      if(defined $subclass) {
-        if($state == 1) {
-          push @re, rechar(pop(@re), $mod);
-        } elsif($state == 2) {
-          croak sprintf($ErrInvalRng, "-$_");
-        }
-        push @re, $subclass;
-        $state = 3;
-        next;
-      }
-
-      my $char = _parse_char(\$_);
-      if($state == 1) {
-        push @re, rechar(pop(@re), $mod);
-        push @re, $char;
-        $state = 1;
-      } elsif($state == 2) {
-        push @re, __expand(__ord(pop(@re)), __ord($char), $mod);
-        $state = 0;
-      } else {
-        push @re, $char;
-        $state = 1;
-      }
+	    my $char = _parse_char(\$_);
+	    if ($state == 1) {
+		push @re, rechar(pop(@re), $mod);
+		push @re, $char;
+		$state = 1;
+	    } elsif ($state == 2) {
+		push @re, __expand(__ord(pop(@re)), __ord($char), $mod);
+		$state = 0;
+	    } else {
+		push @re, $char;
+		$state = 1;
+	    }
+	}
     }
-  }
 
-  if($state != 4) {
-    croak sprintf($ErrUnTermin, "character class", ']');
-  }
-
-  return '(?:' . join('|', @re) . ')';
+    if ($state != 4) {
+	croak sprintf($ErrUnTermin, "character class", ']');
+    }
+    return '(?:' . join('|', @re) . ')';
 }
 
 
-my(%Cache);
 
-sub re
-{
-  my($flag);
-  my $pat = shift;
-  my $mod = shift || '';
-  if($pat =~ s/^ (\^|\\[AG]|) \(\? ([a-zA-Z]+) \) /$1/x){
-    $mod .= $2;
-  }
-  my $s = $mod =~ /s/;
-  my $m = $mod =~ /m/;
-  my $x = $mod =~ /x/;
-  my $h = $mod =~ /h/;
-  if($mod =~ /o/ && defined $Cache{$pat}{$mod}){
-    return $Cache{$pat}{$mod};
-  }
-  my $res = $m && $s ? '(?ms)' : $m ? '(?m)' : $s ? '(?s)' : '';
-  my $tmppat = $pat;
-  for($tmppat){
-    while(length){
-      if(s/^(\(\?[p?]?{)//){
-        $res .= $1;
-        my $count = 1;
-        while($count && length){
-          if(s/^(\x5C[\x00-\xFC])//){
-             $res .= $1;
-             next;
-          }
-          if(s/^([^{}\\]+)//){
-             $res .= $1;
-             next;
-          }
-          if(s/^{//){
-             ++$count;
-             $res .= '{';
-             next;
-          }
-          if(s/^}//){
-             --$count;
-             $res .= '}';
-             next;
-          }
-          croak $ErrCode;
-        }
-        if(s/^\)//){
-          $res .= ')';
-          next;
-        }
-        croak $ErrCode;
-      }
-      if(s/^\x5B(\^?)//)
-      {
-        my $not = $1;
-        my $class = _parse_class(\$_, $mod);
-        $res .= $not ? "(?:(?!$class)$Char)" : $class;
-        next;
-      }
-
-      if(s/^\\([.*+?^$|\\()\[\]{}])//){ # backslashed meta chars
-        $res .= '\\'.$1;
-        next;
-      }
-      if(s|^\\?(['"/])||){ # <'>, <">, </> should be backslashed.
-        $res .= '\\'.$1;
-        next;
-      }
-      if($x && s/^\s+//){ # skip whitespace
-        next;
-      }
-      if(s/^\.//){ # dot
-        $res .= $s ? $Re{'\j'} : $Re{'\J'};
-        next;
-      }
-      if(s/^\^//){ # begin
-        $res .= '(?:^)';
-        next;
-      }
-      if(s/^\$//){ # end
-        $res .= '(?:$)';
-        next;
-      }
-      if(s/^\\z//){ # \z
-        $res .= '(?!\n)\Z';
-        next;
-      }
-      if(s/^\\([dDwWsSCjJ])//){ # class
-        $res .= $Re{ "\\$1" };
-        next;
-      }
-      if(s/^\\([pP])//) { # prop
-        my $key = _parse_prop($1, \$_);
-        if(defined $Re{$key}) {
-          $res .= $Re{$key};
-        } else {
-          croak sprintf($ErrUndef, $key);
-        }
-        next;
-      }
-      if(s/^\\([0-7][0-7][0-7]?)//){
-        $res .= rechar(chr oct $1, $mod);
-        next;
-      }
-      if(s/^\\0//){
-        $res .='\\x00';
-        next;
-      }
-      if(s/^\\c([\x00-\x7F])//){
-        $res .= rechar(chr(ord(uc $1) ^ 64), $mod);
-        next;
-      }
-      if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
-        $res .= rechar(chr hex $1, $mod);
-        next;
-      }
-      if(s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
-        $res .= rechar(chr(hex $1).chr(hex $2), $mod);
-        next;
-      }
-      if(s/^\\([A-Za-z])//){
-        $res .= '\\'. $1;
-        next;
-      }
-      if(s/^(\(\?[a-z\-\s]+)//){
-        $res .= $1;
-        next;
-      }
-      if(s/^\\([1-9])//){
-        $res .= $h ? '\\'. ($1+1) : '\\'. $1;
-        next;
-      }
-      if(s/^([\x21-\x40\x5B\x5D-\x60\x7B-\x7E])//){
-        $res .= $1;
-        next;
-      }
-      if($_ eq '\\'){
-        croak $ErrBackTips;
-        next;
-      }
-      if(s/^\\?($Char)//o){
-        $res .= rechar($1, $mod);
-        next;
-      }
-      croak sprintf($ErrOddTrail, ord);
+sub rechar ($;$) {
+    my $c   = shift;
+    my $mod = shift || '';
+    if (1 == length $c) {
+	return $c =~ /^[A-Za-z]$/ && $mod =~ /i/
+	    ? "[\U$c\L$c]"
+	    : sprintf('\\x%02x', ord $c);
     }
-  }
-  return $mod =~ /o/ ? ($Cache{$pat}{$mod} = $res) : $res;
-}
-
-
-sub rechar
-{
-  my $c   = shift;
-  my $mod = shift || '';
-  if(1 == length $c){
-    return $c =~ /^[A-Za-z]$/ && $mod =~ /i/
-	? "[\U$c\L$c]"
-	: sprintf('\\x%02x', ord $c);
-  }
-  my ($d) = ord substr($c,1,1); # the trail byte
-  my $rechar =
+    my ($d) = ord substr($c,1,1); # the trail byte
+    my $rechar =
 	   $c =~ /^\x82([\x60-\x79])$/ && $mod =~ /I/
 	? sprintf('\x82[\x%02x\x%02x]', $d, $d+33)
 	:  $c =~ /^\x82([\x81-\x9A])$/ && $mod =~ /I/
@@ -784,7 +627,7 @@ sub rechar
 	? sprintf('\x84[\x%02x\x%02x]', $d, $d-48)
 	:  $c =~ /^\x84([\x80-\x91])$/ && $mod =~ /I/
 	? sprintf('\x84[\x%02x\x%02x]', $d, $d-49)
-        :  $c =~ /^\x82([\x9F-\xDD])$/ && $mod =~ /j/
+	:  $c =~ /^\x82([\x9F-\xDD])$/ && $mod =~ /j/
 	? sprintf('\x82\x%02x|\x83\x%02x', $d, $d-0x5F)
 	:  $c =~ /^\x82([\xDE-\xF1])$/ && $mod =~ /j/
 	? sprintf('\x82\x%02x|\x83\x%02x', $d, $d-0x5E)
@@ -800,341 +643,481 @@ sub rechar
     return "$Open$rechar$Close";
 }
 
+my(%Cache);
 
-sub dst
-{
-  my $res = '';
-  my $dst = shift;
-  for($dst){
-    while(length){
-      if(s/^\\\\//){
-        $res .= '\\\\';
-        next;
-      }
-      if(s/^\\?\///){
-        $res .= '\\/';
-        next;
-      }
-      if(s/^\$([1-8])//){
-        $res .= '${' . ($1 + 1) . '}';
-        next;
-      }
-      if(s/^\${([1-8])}//){
-        $res .= '${' . ($1 + 1) . '}';
-        next;
-      }
-      if(s/^\\([0-7][0-7][0-7])//){
-        $res .= "\\$1";
-        next;
-      }
-      if(s/^\\([0-7][0-7])//){
-        $res .= "\\0$1";
-        next;
-      }
-      if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
-        $res .= "\\x$1";
-        next;
-      }
-      if(s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
-        $res .= '\\x' . $1 . '\\x' . $2;
-        next;
-      }
-      if(s/^\\0//){
-        $res .='\\x00';
-        next;
-      }
-      if(s/^\\([A-Za-z])//){
-        $res .= '\\'. $1;
-        next;
-      }
-      if(s/^\\?([\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])//){
-        $res .= quotemeta($1);
-        next;
-      }
-      if(s/^\\?([\x00-\x7F\xA1-\xDF])//){
-        $res .= $1;
-        next;
-      }
-      croak sprintf($ErrOddTrail, ord);
+sub getReCache { wantarray ? %Cache : \%Cache }
+
+sub re ($;$) {
+    my($flag);
+    my $pat = shift;
+    my $mod = shift || '';
+    if ($pat =~ s/^ (\^|\\[AG]|) \(\? ([a-zA-Z]+) \) /$1/x) {
+	$mod .= $2;
     }
-  }
-  return $res;
+
+    my $s = $mod =~ /s/;
+    my $m = $mod =~ /m/;
+    my $x = $mod =~ /x/;
+    my $h = $mod =~ /h/;
+
+    if($mod =~ /o/ && defined $Cache{$pat}{$mod}){
+	return $Cache{$pat}{$mod};
+    }
+
+    my $res = $m && $s ? '(?ms)' : $m ? '(?m)' : $s ? '(?s)' : '';
+    my $tmppat = $pat;
+
+    for ($tmppat) {
+	while (length) {
+	    if (s/^(\(\?[p?]?{)//) {
+		$res .= $1;
+		my $count = 1;
+		while ($count && length) {
+		    if (s/^(\x5C[\x00-\xFC])//) {
+			$res .= $1;
+			next;
+		    }
+		    if (s/^([^{}\\]+)//) {
+			$res .= $1;
+			next;
+		    }
+		    if (s/^{//) {
+			++$count;
+			$res .= '{';
+			next;
+		    }
+		    if (s/^}//) {
+			--$count;
+			$res .= '}';
+			next;
+		    }
+		    croak $ErrCode;
+		}
+		if (s/^\)//) {
+		    $res .= ')';
+		    next;
+		}
+		croak $ErrCode;
+	    }
+
+	    if (s/^\x5B(\^?)//) {
+		my $not = $1;
+		my $class = _parse_class(\$_, $mod);
+		$res .= $not ? "(?:(?!$class)$Char)" : $class;
+		next;
+	    }
+
+	    if (s/^\\([.*+?^$|\\()\[\]{}])//) { # backslashed meta chars
+		$res .= '\\'.$1;
+		next;
+	    }
+	    if (s|^\\?(['"/])||) { # <'>, <">, </> should be backslashed.
+		$res .= '\\'.$1;
+		next;
+	    }
+	    if ($x && s/^\s+//) { # skip whitespace
+		next;
+	    }
+	    if (s/^\.//) { # dot
+		$res .= $s ? $Re{'\j'} : $Re{'\J'};
+		next;
+	    }
+	    if (s/^\^//) { # begin
+		$res .= '(?:^)';
+		next;
+	    }
+	    if (s/^\$//) { # end
+		$res .= '(?:$)';
+		next;
+	    }
+	    if (s/^\\z//) { # \z (Perl 5.003 doesn't have this)
+		$res .= '(?!\n)\Z';
+		next;
+	    }
+	    if (s/^\\([dDwWsSCjJ])//) { # class
+		$res .= $Re{ "\\$1" };
+		next;
+	    }
+	    if (s/^\\([pP])//) { # prop
+	        my $key = _parse_prop($1, \$_);
+		if (defined $Re{$key}) {
+		    $res .= $Re{$key};
+		} else {
+		    croak sprintf($ErrUndef, $key);
+		}
+		next;
+	    }
+	    if (s/^\\([0-7][0-7][0-7]?)//) {
+		$res .= rechar(chr oct $1, $mod);
+		next;
+	    }
+	    if (s/^\\0//) {
+		$res .='\\x00';
+		next;
+	    }
+	    if (s/^\\c([\x00-\x7F])//) {
+		$res .= rechar(chr(ord(uc $1) ^ 64), $mod);
+		next;
+	    }
+	    if (s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//) {
+		$res .= rechar(chr hex $1, $mod);
+		next;
+	    }
+	    if (s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//) {
+		$res .= rechar(chr(hex $1).chr(hex $2), $mod);
+		next;
+	    }
+	    if (s/^\\([A-Za-z])//) {
+		$res .= '\\'. $1;
+		next;
+	    }
+	    if (s/^(\(\?[a-z\-\s]+)//) {
+		$res .= $1;
+		next;
+	    }
+	    if (s/^\\([1-9])//) {
+		$res .= $h ? '\\'. ($1+1) : '\\'. $1;
+		next;
+	    }
+	    if (s/^([\x21-\x40\x5B\x5D-\x60\x7B-\x7E])//) {
+		$res .= $1;
+		next;
+	    }
+	    if ($_ eq '\\') {
+		croak $ErrBackTips;
+	    }
+	    if (s/^\\?($Char)//o) {
+		$res .= rechar($1, $mod);
+		next;
+	    }
+	    croak sprintf($ErrOddTrail, ord);
+	}
+    }
+    return $mod =~ /o/ ? ($Cache{$pat}{$mod} = $res) : $res;
 }
 
-sub match
-{
-  my $str = $_[0];
-  my $mod = $_[2] || '';
-  my $pat = re($_[1], $mod);
-  if($mod =~ /g/){
-    my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
-    $str =~ /$fore(?:$pat)/g;
-  } else {
-    $str =~ /$Apad(?:$pat)/;
-  }
+
+
+sub dst ($) {
+    my $str = shift;
+    my $res = '';
+    for ($str) {
+	while (length) {
+	    if (s/^\\\\//) {
+		$res .= '\\\\';
+		next;
+	    }
+	    if (s/^\\?\///) {
+		$res .= '\\/';
+		next;
+	    }
+	    if (s/^\$([1-8])//) {
+		$res .= '${' . ($1 + 1) . '}';
+		next;
+	    }
+	    if (s/^\${([1-8])}//) {
+		$res .= '${' . ($1 + 1) . '}';
+		next;
+	    }
+	    if (s/^\\([0-7][0-7][0-7])//) {
+		$res .= "\\$1";
+		next;
+	    }
+	    if (s/^\\([0-7][0-7])//) {
+		$res .= "\\0$1";
+		next;
+	    }
+	    if (s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//) {
+		$res .= "\\x$1";
+		next;
+	    }
+	    if (s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//) {
+		$res .= '\\x' . $1 . '\\x' . $2;
+		next;
+	    }
+	    if (s/^\\0//) {
+		$res .='\\x00';
+		next;
+	    }
+	    if (s/^\\([A-Za-z])//) {
+		$res .= '\\'. $1;
+		next;
+	    }
+	    if (s/^\\?([\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])//) {
+		$res .= quotemeta($1);
+		next;
+	    }
+	    if (s/^\\?([\x00-\x7F\xA1-\xDF])//) {
+		$res .= $1;
+		next;
+	    }
+	    croak sprintf($ErrOddTrail, ord);
+	}
+    }
+    return $res;
 }
 
-
-sub replace
-{
-  my $str = $_[0];
-  my $dst = dst($_[2]);
-  my $mod = $_[3] || '';
-  my $pat = re($_[1], 'h'.$mod);
-  if($mod =~ /g/){
-    my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
-    if(ref $str){
-      eval "\$\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
+sub match ($$;$) {
+    my $str = $_[0];
+    my $mod = $_[2] || '';
+    my $pat = re($_[1], $mod);
+    if ($mod =~ /g/) {
+	my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
+	$str =~ /$fore(?:$pat)/g;
     } else {
-      eval   "\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
-      $str;
+	$str =~ /$Apad(?:$pat)/;
     }
-  } else {
-    if(ref $str){
-      eval "\$\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
+}
+
+
+sub replace ($$$;$) {
+    my $str = $_[0];
+    my $dst = dst($_[2]);
+    my $mod = $_[3] || '';
+    my $pat = re($_[1], 'h'.$mod);
+    if ($mod =~ /g/) {
+	my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
+	if (ref $str) {
+	    eval "\$\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
+	} else {
+	    eval   "\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
+	    $str;
+	}
     } else {
-      eval   "\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
-      $str;
-    }
-  }
+	if (ref $str) {
+	    eval "\$\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
+	} else {
+	    eval   "\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
+	    $str;
+	}
+   }
 }
 
 
-sub __ord  { length($_[0]) > 1 ? unpack('n', $_[0]) : ord($_[0]) }
+sub __ord ($) { length($_[0]) > 1 ? unpack('n', $_[0]) : ord($_[0]) }
 
-sub __ord2 { 0xFF < $_[0] ? unpack('C*', pack 'n', $_[0]) : chr($_[0]) }
+sub __ord2($) { 0xFF < $_[0] ? unpack('C*', pack 'n', $_[0]) : chr($_[0]) }
 
-sub __expand
+sub __expand ($$;$)
 {
-  my($fr, $to, $mod) = @_;
-  $mod ||= '';
-  my($ini, $fin, $i, $ch, @retv, @retd, $add);
-  my($ini_f, $fin_f, $ini_t, $fin_t, $ini_c, $fin_c);
+    my($fr, $to, $mod) = @_;
+    $mod ||= '';
+    my($ini, $fin, $i, $ch, @retv, @retd, $add);
+    my($ini_f, $fin_f, $ini_t, $fin_t, $ini_c, $fin_c);
 
-  if($fr > $to){ croak sprintf($ErrReverse, $fr, $to) }
-  if($fr <= 0x7F){
-    $ini = $fr < 0x00 ? 0x00 : $fr;
-    $fin = $to > 0x7F ? 0x7F : $to;
-    if($ini == $fin){
-      push @retv, rechar(chr($ini),$mod);
-    }
-    elsif($ini < $fin){
-      if($mod =~ /i/){
-         for($i=$ini;$i<=$fin;$i++){
-            $add .= lc(chr $i) if 0x41 <= $i && $i <= 0x5A;
-            $add .= uc(chr $i) if 0x61 <= $i && $i <= 0x7A;
-         }
-      } else {$add = ''}
-      push @retv, sprintf "[\\x%02x-\\x%02x$add]", $ini, $fin;
-    }
-  }
-  if($fr <= 0xDF){
-    $ini = $fr < 0xA1 ? 0xA1 : $fr;
-    $fin = $to > 0xDF ? 0xDF : $to;
-    if($ini == $fin){
-      push @retd, sprintf('\\x%2x', $ini);
-    }
-    elsif($ini < $fin){
-      push @retd, sprintf('[\\x%2x-\\x%2x]', $ini, $fin);
-    }
-  }
-  $ini = $fr < 0x8140 ? 0x8140 : $fr;
-  $fin = $to > 0xFCFC ? 0xFCFC : $to;
-  if($ini <= $fin){
-    ($ini_f,$ini_t) = __ord2($ini);
-    ($fin_f,$fin_t) = __ord2($fin);
+    if ($fr > $to) { croak sprintf($ErrReverse, $fr, $to) }
 
-    if($ini_f == $fin_f){
-      push @retd,
-	$ini_t == $fin_t ?
-	  sprintf('\x%2x\x%2x', $ini_f, $ini_t) :
-	$fin_t <= 0x7E || 0x80 <= $ini_t ?
-	  sprintf('\x%2x[\x%2x-\x%2x]', $ini_f, $ini_t, $fin_t) :
-	$ini_t == 0x7E && $fin_t == 0x80 ?
-	  sprintf('\x%2x[\x7e\x80]', $ini_f) :
-	$ini_t == 0x7E ?
-	  sprintf('\x%2x[\x7e\x80-\x%2x]', $ini_f, $fin_t) :
-	$fin_t == 0x80 ?
-	  sprintf('\x%2x[\x%2x-\x7e\x80]', $ini_f, $ini_t) :
-	sprintf('\x%2x[\x%2x-\x7e\x80-\x%2x]',$ini_f, $ini_t, $fin_t);
+    if ($fr <= 0x7F) {
+	$ini = $fr < 0x00 ? 0x00 : $fr;
+	$fin = $to > 0x7F ? 0x7F : $to;
+	if ($ini == $fin) {
+	    push @retv, rechar(chr($ini),$mod);
+	} elsif ($ini < $fin) {
+	    if ($mod =~ /i/) {
+		for ($i=$ini; $i<=$fin; $i++) {
+		    $add .= lc(chr $i) if 0x41 <= $i && $i <= 0x5A;
+		    $add .= uc(chr $i) if 0x61 <= $i && $i <= 0x7A;
+		}
+	    } else { $add = '' }
+	    push @retv, sprintf "[\\x%02x-\\x%02x$add]", $ini, $fin;
+	}
     }
-    else {
-      $ini_c = $ini_t == 0x40 ? $ini_f : $ini_f == 0x9F ? 0xE0 : $ini_f+1;
-      $fin_c = $fin_t == 0xFC ? $fin_f : $fin_f == 0xE0 ? 0x9F : $fin_f-1;
 
-      if($ini_t != 0x40){
-        push @retd,
-	  $ini_t == 0xFC ?
-	    sprintf('\x%2x\xfc', $ini_f) :
-	  0x80 <= $ini_t ?
-	    sprintf('\x%2x[\x%2x-\xfc]', $ini_f, $ini_t) :
-	  $ini_t == 0x7E ?
-	    sprintf('\x%2x[\x7e\x80-\xfc]', $ini_f) :
-	    sprintf('\x%2x[\x%2x-\x7e\x80-\xfc]', $ini_f, $ini_t);
-      }
-      if($ini_c > $fin_c) { 1 }
-      else {
-        my $lead = 
-	  $ini_c == $fin_c
-	    ?  sprintf('\x%2x', $ini_c) :
-	  $fin_c <= 0x9F || 0xE0 <= $ini_c
-	    ? sprintf('[\x%2x-\x%2x]', $ini_c, $fin_c) :
-	  $ini_c == 0x9F && $fin_c == 0xE0
-	    ? '[\x9f\xe0]' :
-	  $ini_c == 0x9F
-	    ? sprintf('[\x9f\xe0-\x%2x]', $fin_c) :
-	  $fin_c == 0xE0
-	    ? sprintf('[\x%2x-\x9f\xe0]', $ini_c)
-	    : sprintf('[\x%2x-\x9f\xe0-\x%2x]', $ini_c, $fin_c);
+    if ($fr <= 0xDF) {
+	$ini = $fr < 0xA1 ? 0xA1 : $fr;
+	$fin = $to > 0xDF ? 0xDF : $to;
+	if ($ini == $fin) {
+	    push @retd, sprintf('\\x%2x', $ini);
+	} elsif($ini < $fin) {
+	    push @retd, sprintf('[\\x%2x-\\x%2x]', $ini, $fin);
+	}
+    }
 
-        push @retd, $lead.$Trail;
-      }
-      if($fin_t != 0xFC){
-        push @retd,
-	  $fin_t == 0x40 ?
-	    sprintf('\x%2x\x40', $fin_f) :
-	  $fin_t <= 0x7E ?
-	    sprintf('\x%2x[\x40-\x%2x]', $fin_f, $fin_t) :
-	  $fin_t == 0x80 ?
-	    sprintf('\x%2x[\x40-\x7e\x80]', $fin_f) :
-	  sprintf('\x%2x[\x40-\x7e\x80-\x%2x]', $fin_f, $fin_t);
-      }
+    $ini = $fr < 0x8140 ? 0x8140 : $fr;
+    $fin = $to > 0xFCFC ? 0xFCFC : $to;
+    if ($ini <= $fin) {
+	($ini_f,$ini_t) = __ord2($ini);
+	($fin_f,$fin_t) = __ord2($fin);
+	if ($ini_f == $fin_f) {
+	    push @retd,
+		$ini_t == $fin_t ?
+		  sprintf('\x%2x\x%2x', $ini_f, $ini_t) :
+		$fin_t <= 0x7E || 0x80 <= $ini_t ?
+		  sprintf('\x%2x[\x%2x-\x%2x]', $ini_f, $ini_t, $fin_t) :
+		$ini_t == 0x7E && $fin_t == 0x80 ?
+		  sprintf('\x%2x[\x7e\x80]', $ini_f) :
+		$ini_t == 0x7E ?
+		  sprintf('\x%2x[\x7e\x80-\x%2x]', $ini_f, $fin_t) :
+		$fin_t == 0x80 ?
+		  sprintf('\x%2x[\x%2x-\x7e\x80]', $ini_f, $ini_t) :
+		sprintf('\x%2x[\x%2x-\x7e\x80-\x%2x]',$ini_f, $ini_t, $fin_t);
+	} else {
+	    $ini_c = $ini_t == 0x40 ? $ini_f : 
+		     $ini_f == 0x9F ? 0xE0 : $ini_f + 1;
+	    $fin_c = $fin_t == 0xFC ? $fin_f : 
+		     $fin_f == 0xE0 ? 0x9F : $fin_f - 1;
+
+	    if ($ini_t != 0x40) {
+		push @retd,
+		  $ini_t == 0xFC ?
+		    sprintf('\x%2x\xfc', $ini_f) :
+		  0x80 <= $ini_t ?
+		    sprintf('\x%2x[\x%2x-\xfc]', $ini_f, $ini_t) :
+		  $ini_t == 0x7E ?
+		    sprintf('\x%2x[\x7e\x80-\xfc]', $ini_f) :
+		    sprintf('\x%2x[\x%2x-\x7e\x80-\xfc]', $ini_f, $ini_t);
+	    }
+	    if ($ini_c <= $fin_c) {
+		my $lead = 
+		  $ini_c == $fin_c
+		    ?  sprintf('\x%2x', $ini_c) :
+		  $fin_c <= 0x9F || 0xE0 <= $ini_c
+		    ? sprintf('[\x%2x-\x%2x]', $ini_c, $fin_c) :
+		  $ini_c == 0x9F && $fin_c == 0xE0
+		    ? '[\x9f\xe0]' :
+		  $ini_c == 0x9F
+		    ? sprintf('[\x9f\xe0-\x%2x]', $fin_c) :
+		  $fin_c == 0xE0
+		    ? sprintf('[\x%2x-\x9f\xe0]', $ini_c)
+		    : sprintf('[\x%2x-\x9f\xe0-\x%2x]', $ini_c, $fin_c);
+		push @retd, $lead.$Trail;
+	    }
+	    if ($fin_t != 0xFC) {
+		push @retd,
+		  $fin_t == 0x40 ?
+		    sprintf('\x%2x\x40', $fin_f) :
+		  $fin_t <= 0x7E ?
+		    sprintf('\x%2x[\x40-\x%2x]', $fin_f, $fin_t) :
+		  $fin_t == 0x80 ?
+		    sprintf('\x%2x[\x40-\x7e\x80]', $fin_f) :
+		  sprintf('\x%2x[\x40-\x7e\x80-\x%2x]', $fin_f, $fin_t);
+	    }
+	}
     }
-  }
-  if($mod =~ /I/){
-    for(
-      [0x8260, 0x8279, +33], # Full A to Z
-      [0x8281, 0x829A, -33], # Full a to z
-      [0x839F, 0x83B6, +32], # Greek Alpha to Omega
-      [0x83BF, 0x83D6, -32], # Greek alpha to omega
-      [0x8440, 0x844E, +48], # Cyrillic A to N
-      [0x8470, 0x847E, -48], # Cyrillic a to n
-      [0x844F, 0x8460, +49], # Cyrillic O to Ya
-      [0x8480, 0x8491, -49], # Cyrillic o to ya
-    ){
-      if($fr <= $_->[1] && $_->[0] <= $to){
-        ($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
-        ($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
-        push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
-		$ini_f, $ini_t + $_->[2], $fin_t + $_->[2]);
-      }
+    if ($mod =~ /I/) {
+	for (
+	    [0x8260, 0x8279, +33], # Full A to Z
+	    [0x8281, 0x829A, -33], # Full a to z
+	    [0x839F, 0x83B6, +32], # Greek Alpha to Omega
+	    [0x83BF, 0x83D6, -32], # Greek alpha to omega
+	    [0x8440, 0x844E, +48], # Cyrillic A to N
+	    [0x8470, 0x847E, -48], # Cyrillic a to n
+	    [0x844F, 0x8460, +49], # Cyrillic O to Ya
+	    [0x8480, 0x8491, -49], # Cyrillic o to ya
+	) {
+	    if($fr <= $_->[1] && $_->[0] <= $to){
+		($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
+		($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
+		push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
+		    $ini_f, $ini_t + $_->[2], $fin_t + $_->[2]);
+	    }
+	}
     }
-  }
-  if($mod =~ /j/){
-    for(
-      [0x829F, 0x82DD, -0x5F, 0x83], # Hiragana Small A to Mi
-      [0x82DE, 0x82F1, -0x5E, 0x83], # Hiragana Mu to N
-      [0x8340, 0x837E, +0x5F, 0x82], # Katakana Small A to Mi
-      [0x8380, 0x8393, +0x5E, 0x82], # Katakana Mu to N
-      [0x8152, 0x8153, +2,    0x81], # Katakana Iteration Marks
-      [0x8154, 0x8155, -2,    0x81], # Hiragana Iteration Marks
-    ){
-      if($fr <= $_->[1] && $_->[0] <= $to){
-        ($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
-        ($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
-        push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
-		$_->[3], $ini_t + $_->[2], $fin_t + $_->[2]);
-      }
+    if ($mod =~ /j/) {
+	for (
+	    [0x829F, 0x82DD, -0x5F, 0x83], # Hiragana Small A to Mi
+	    [0x82DE, 0x82F1, -0x5E, 0x83], # Hiragana Mu to N
+	    [0x8340, 0x837E, +0x5F, 0x82], # Katakana Small A to Mi
+	    [0x8380, 0x8393, +0x5E, 0x82], # Katakana Mu to N
+	    [0x8152, 0x8153, +2,    0x81], # Katakana Iteration Marks
+	    [0x8154, 0x8155, -2,    0x81], # Hiragana Iteration Marks
+	) {
+	    if ($fr <= $_->[1] && $_->[0] <= $to) {
+		($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
+		($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
+		push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
+		    $_->[3], $ini_t + $_->[2], $fin_t + $_->[2]);
+	    }
+	}
     }
-  }
-  return(@retv, @retd ? $Open.join('|',@retd).$Close : ());
+    return(@retv, @retd ? $Open.join('|',@retd).$Close : ());
 }
-
 
 #
 # splitchar(STRING; LIMIT)
-# 
-sub splitchar
-{
-  my($str, $lim, @ret);
-  ($str, $lim) = @_;
-  $lim = 0 if ! defined $lim;
-  if($str eq ''){
-    return wantarray ? () : 0;
-  } elsif($lim == 1){
-    return wantarray ? ($str) : 1;
-  } elsif($lim > 1) {
-    while($str =~ s/($Char)//o){
-      push @ret, $1;
-      last if @ret >= $lim - 1;
+#
+sub splitchar ($;$) {
+    my $str = shift;
+    my $lim = shift || 0;
+
+    return wantarray ? () : 0 if $str eq '';
+    return wantarray ? ($str) : 1 if $lim == 1;
+
+    my(@ret);
+    if ($lim > 1) {
+	while ($str =~ s/($Char)//o) {
+	    push @ret, $1;
+	    last if @ret >= $lim - 1;
+	}
+	push @ret, $str;
+    } else {
+	@ret = $str =~ /$Char/go;
+	push @ret, '' if $lim < 0;
     }
-    push @ret, $str;
-  } else {
-    @ret = _splitchar($str);
-    push @ret, '' if $lim < 0;
-  }
-  @ret;
+    return @ret;
 }
 
-sub _splitchar { $_[0] =~ /$Char/go }
+#
+# splitspace(STRING; LIMIT)
+#
+sub splitspace ($;$) {
+    my $str = shift;
+    my $lim = shift || 0;
+    return wantarray ? () : 0 if $str eq '';
 
+    my @ret;
+    if (0 < $lim) {
+	$str =~ s/^(?:[ \n\r\t\f]|\x81\x40)+//;
+	@ret = jsplit('(?o)[ \n\r\t\f\x{8140}]+', $str, $lim)
+    } else {
+	$str =~ s/\G($Char*?)\x81\x40/$1 /go;
+	@ret = split(' ', $str, $lim);
+    }
+    return @ret;
+}
 
 #
 # jsplit(PATTERN, STRING; LIMIT)
 #
-sub jsplit
-{
-  my($thing, $pat, $str, $lim, $cnt, @mat, @ret);
-  $thing = shift;
-  $pat = 'ARRAY' eq ref $thing ? re(@$thing) : re($thing);
-  $str = shift;
-  $lim = shift || 0;
+sub jsplit ($$;$) {
+    my $thing = shift;
+    my $str = shift;
+    my $lim = shift || 0;
 
-  return wantarray ? () : 0 if $str eq '';
-  return splitchar($str, $lim) if $pat eq '';
-  return wantarray ? ($str) : 1 if $lim == 1;
+    return splitspace($str, $lim) if !defined $thing;
 
-  $cnt = 0;
-  while(@mat = $str =~ /^($Char*?)($pat)/){
-    if($mat[0] eq '' && $mat[1] eq ''){
-      @mat = $str =~ /^($Char)($pat)/;
-      $str =~ s/^$Char$pat//;
-    } else {
-      $str =~ s/^$Char*?$pat//;
+    my $pat = 'ARRAY' eq ref $thing
+	? re($$thing[0], $$thing[1])
+	: re($thing);
+
+    return splitchar($str, $lim) if $pat eq '';
+    return wantarray ? () : 0 if $str eq '';
+    return wantarray ? ($str) : 1 if $lim == 1;
+
+    my $cnt = 0;
+    my(@mat, @ret);
+    while (@mat = $str =~ /^($Char*?)($pat)/) {
+	if ($mat[0] eq '' && $mat[1] eq '') {
+	    @mat = $str =~ /^($Char)($pat)/;
+	    $str =~ s/^$Char$pat//;
+	} else {
+	    $str =~ s/^$Char*?$pat//;
+	}
+	if (@mat) {
+	    push @ret, shift @mat;
+	    shift @mat; # $mat[1] eq $2 is to be removed.
+	    push @ret, @mat;
+	}
+	$cnt++;
+	last if ! CORE::length $str;
+	last if $lim > 1 && $cnt >= $lim - 1;
     }
-    if(@mat){
-      push @ret, shift @mat;
-      shift @mat; # $mat[1] eq $2 is to be removed.
-      push @ret, @mat;
+    push @ret, $str if $str ne '' || $lim < 0 || $cnt < $lim;
+    if ($lim == 0) {
+	pop @ret while defined $ret[-1] && $ret[-1] eq '';
     }
-    $cnt++;
-    last if ! CORE::length $str;
-    last if $lim > 1 && $cnt >= $lim - 1;
-  }
-  push @ret, $str if $str ne '' || $lim < 0 || $cnt < $lim;
-  if($lim == 0){pop @ret while defined $ret[-1] && $ret[-1] eq ''}
-  @ret;
+    return @ret;
 }
-
-sub splitspace
-{
-  my($str, $lim) = @_;
-  return wantarray ? () : 0 if $str eq '';
-
-  defined $lim && 0 < $lim 
-    ? do{
-        (ref $str ? $$str : $str) =~ s/^(?:[ \n\r\t\f]|\x81\x40)+//;
-        jsplit('(?o)[ \n\r\t\f\x{8140}]+', $str, $lim)
-      }
-    : split(' ', spaceZ2H($str), $lim);
-}
-
-sub spaceZ2H
-{
-  my $str = shift;
-  my $len = CORE::length(ref $str ? $$str : $str);
-  (ref $str ? $$str : $str) =~
-     s/\G($Char*?)\x81\x40/$1 /go;
-  ref $str ? abs($len - CORE::length $$str) : $str;
-};
-
-sub spaceH2Z
-{
-  my $str = shift;
-  my $len = CORE::length(ref $str ? $$str : $str);
-  (ref $str ? $$str : $str) =~ s/ /\x81\x40/g;
-  ref $str ? abs($len - CORE::length $$str) : $str;
-};
 
 1;
 __END__
@@ -1273,11 +1256,18 @@ found, but do not split into the C<@_> array.
 
 C<PATTERN> is specified as a string.
 
-But C<' '> as C<PATTERN> has no special meaning;
-when you want to split the string on whitespace,
-you can use C<splitspace()> function.
-
     jsplit('Å^', 'Ç†Ç¢Ç§Å^Ç¶Ç®ÉÅ^');
+
+But C<' '> as C<PATTERN> has no special meaning;
+it splits the string on a single space similarly to C<CORE::split / />.
+
+When you want to split the string on whitespace,
+pass an undefined value as C<PATTERN>
+or use the C<splitspace()> function.
+
+    jsplit(undef, ' Å@ This  is Å@ perl.');
+    splitspace(' Å@ This  is Å@ perl.');
+    # ('This', 'is', 'perl.')
 
 If you want to pass pattern with modifiers,
 specify an arrayref of C<[PATTERN, MODIFIER]> as the first argument.
@@ -1306,16 +1296,22 @@ C<MODIFIER> is specified as a string.
 
 =item C<splitspace(STRING, LIMIT)>
 
-This function emulates C<CORE::split ' ', STRING>
+This function emulates C<CORE::split ' ', STRING, LIMIT>
 and returns the array given by split on whitespace including IDEOGRAPHIC SPACE.
 Leading whitespace characters do not produce any field.
+
+B<Note:> C<splitspace(STRING, LIMIT)> is equivalent
+to C<jsplit(undef, STRING, LIMIT)>.
 
 =item C<splitchar(STRING)>
 
 =item C<splitchar(STRING, LIMIT)>
 
-This function emulates C<CORE::split //, STRING>
+This function emulates C<CORE::split //, STRING, LIMIT>
 and returns the array given by split of the specified string into characters.
+
+B<Note:> C<splitchar(STRING, LIMIT)> is equivalent
+to C<jsplit('', STRING, LIMIT)>.
 
 =back
 

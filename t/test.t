@@ -37,8 +37,8 @@ print !match("Perl", "perl")
    &&  match("これはＰｅｒｌ", "ｐｅｒｌ", 'I')
    &&  match("ΠεΡλ", "περλ", 'I')
    &&  match("ΠεΡλ", "(?I)περλ", 'j')
-   &&  match('座標表示', qw/\表 /)
-   && !match('Y座標', qw/\表 /)
+   &&  match('座標表示', (qw/表 /)[0] )
+   && !match('Y座標', (qw/表 /)[0])
    && !match('＝@＝@ ==@', '　')
    &&  match('あ', '')
    &&  join('', match("あ\nい", '(^\j*)')) eq "あ\nい"
@@ -137,7 +137,7 @@ print 'あ:いう:えおメ^' eq join(':', jsplit('／', 'あ／いう／えおメ^'))
 	'[\a-\b]', '[\a-v]', '[!-@[-^`{-~]',
   ){
     my $str = $asc;
-    my $sjs = replace($str, $re, qw/ｶ g/);
+    my $sjs = replace($str, $re, 'ｶ', 'g');
     $str =~ s/$re/ｶ/g;
     $ng++ if $sjs ne $str;
   }

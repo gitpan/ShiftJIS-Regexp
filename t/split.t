@@ -1,7 +1,7 @@
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..13\n"; }
+BEGIN { $| = 1; print "1..14\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:split);
 $loaded = 1;
@@ -21,7 +21,7 @@ my %table = (
 
 my $char = '(?:[\x00-\x7F\xA1-\xDF]|[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])';
 
-sub printH2Z {
+sub printZ2H {
   my $str = shift;
   $str =~ s/($char)/exists $table{$1} ? $table{$1} : $1/geo;
   $str;
@@ -42,10 +42,10 @@ sub listtostr {
   $NG = 0;
   for $n (-1..20){
     my $core  = @{[ split(//, $str, $n) ]};
-    my $sjsp  = jsplit('',$zen,$n);
-    my $sjsc  = splitchar($zen,$n);
+    my $jspl  = jsplit('',$zen,$n);
+    my $spch  = splitchar($zen,$n);
 
-    ++$NG unless $core == $sjsp && $core == $sjsc;
+    ++$NG unless $core == $jspl && $core == $spch;
   }
   print !$NG ? "ok" : "not ok", " 2\n";
 
@@ -53,9 +53,9 @@ sub listtostr {
   $NG = 0;
   for $n (-1..20){
     my $core = join ':', split //, $str, $n;
-    my $sjsp = join ':', jsplit('',$zen,$n);
-    my $sjsc = join ':', splitchar($zen,$n);
-    ++$NG unless $core eq printH2Z($sjsp) && $core eq printH2Z($sjsc);
+    my $jspl = join ':', jsplit('',$zen,$n);
+    my $spch = join ':', splitchar($zen,$n);
+    ++$NG unless $core eq printZ2H($jspl) && $core eq printZ2H($spch);
   }
   print !$NG ? "ok" : "not ok", " 3\n";
 
@@ -63,8 +63,9 @@ sub listtostr {
   $NG = 0;
   for $n (-1..5){
     my $core = @{[ split ' ', $str, $n ]};
-    my $sjsp = splitspace($zen,$n);
-    ++$NG unless $core eq printH2Z($sjsp);
+    my $jspl = jsplit(undef,$zen,$n);
+    my $spsp = splitspace($zen,$n);
+    ++$NG unless $core eq printZ2H($jspl) && $core eq printZ2H($spsp);
   }
   print !$NG ? "ok" : "not ok", " 4\n";
 
@@ -72,8 +73,9 @@ sub listtostr {
   $NG = 0;
   for $n (-1..5){
     my $core = join ':', split(' ', $str, $n);
-    my $sjsp = join ':', splitspace($zen,$n);
-    ++$NG unless $core eq printH2Z($sjsp);
+    my $jspl = join ':', jsplit(undef,$zen,$n);
+    my $spsp = join ':', splitspace($zen,$n);
+    ++$NG unless $core eq printZ2H($jspl) && $core eq printZ2H($spsp);
   }
   print !$NG ? "ok" : "not ok", " 5\n";
 
@@ -81,8 +83,8 @@ sub listtostr {
   $NG = 0;
   for $n (-1..5){
     my $core = join ':', split(/ /, $str, $n);
-    my $sjsp = join ':', jsplit(' ',$str,$n);
-    ++$NG unless $core eq $sjsp;
+    my $jspl = join ':', jsplit(' ',$str,$n);
+    ++$NG unless $core eq $jspl;
   }
   print !$NG ? "ok" : "not ok", " 6\n";
 
@@ -90,8 +92,8 @@ sub listtostr {
   $NG = 0;
   for $n (-1..5){
     my $core = join ':', split(/\s+/, $str, $n);
-    my $sjsp = join ':', jsplit('\p{IsSpace}+',$zen,$n);
-    ++$NG unless $core eq printH2Z($sjsp);
+    my $jspl = join ':', jsplit('\p{IsSpace}+',$zen,$n);
+    ++$NG unless $core eq printZ2H($jspl);
   }
   print !$NG ? "ok" : "not ok", " 7\n";
 
@@ -99,8 +101,8 @@ sub listtostr {
   $NG = 0;
   for $n (-1..5){
     my $core = join ":", split /\s*,\s*/, " , abc, efg , hij, , , ", $n;
-    my $sjsp = join ":", jsplit('\s*,\s*', " , abc, efg , hij, , , ", $n);
-    ++$NG unless $core eq $sjsp;
+    my $jspl = join ":", jsplit('\s*,\s*', " , abc, efg , hij, , , ", $n);
+    ++$NG unless $core eq $jspl;
   }
   print !$NG ? "ok" : "not ok", " 8\n";
 }
@@ -119,8 +121,9 @@ print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
   $NG = 0;
   for $n (-1..20){
     my $core = @{[ split(//, '', $n) ]};
-    my $mbcs = jsplit('','',$n);
-    ++$NG unless $core == $mbcs;
+    my $jspl = jsplit('','',$n);
+    my $spch = splitchar('',$n);
+    ++$NG unless $core == $jspl && $core == $spch;
   }
   print !$NG ? "ok" : "not ok", " 10\n";
 
@@ -128,8 +131,9 @@ print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
   $NG = 0;
   for $n (-1..20){
     my $core = listtostr( split //, '', $n);
-    my $mbcs = listtostr( jsplit('','',$n));
-    ++$NG unless $core eq $mbcs;
+    my $jspl = listtostr( jsplit('','',$n));
+    my $spch = listtostr( splitchar('',$n));
+    ++$NG unless $core eq $jspl && $core eq $spch;
   }
   print !$NG ? "ok" : "not ok", " 11\n";
 
@@ -137,8 +141,8 @@ print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
   $NG = 0;
   for $n (-1..5){
     my $core = listtostr( split(/ /, '', $n) );
-    my $mbcs = listtostr( jsplit(' ', '', $n) );
-    ++$NG unless $core eq $mbcs;
+    my $jspl = listtostr( jsplit(' ', '', $n) );
+    ++$NG unless $core eq $jspl;
   }
   print !$NG ? "ok" : "not ok", " 12\n";
 
@@ -146,9 +150,15 @@ print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
   $NG = 0;
   for $n (-1..5){
     my $core = listtostr( split(' ', '', $n) );
-    my $mbcs = listtostr( splitspace('', $n) );
-    ++$NG unless $core eq $mbcs;
+    my $jspl = listtostr( jsplit(undef, '', $n) );
+    my $spsp = listtostr( splitspace('', $n) );
+    ++$NG unless $core eq $jspl && $core eq $spsp;
   }
   print !$NG ? "ok" : "not ok", " 13\n";
 }
 
+print 1
+  && 'This/is/perl.' eq join('/', jsplit(undef, ' 　 This  is 　 perl.'))
+  && 'This/is/perl.' eq join('/', splitspace(' 　 This  is 　 perl.'))
+  && 'perl/-wc/mine.pl' eq join('/', splitspace('　perl　-wc　　mine.pl　'))
+  ? "ok" : "not ok", " 14\n";

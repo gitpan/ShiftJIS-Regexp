@@ -1,5 +1,5 @@
 #
-#  USAGE: perl -MTest::Harness -e "runtests('class.t');"
+#  USAGE: perl -MTest::Harness -e "runtests('class1.t');"
 #
 #  Test of \p{ .. }, \P{ .. }, etc.
 #
