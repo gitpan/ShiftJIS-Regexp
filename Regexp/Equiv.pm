@@ -3,7 +3,7 @@ use strict;
 use Carp;
 
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION = '0.25';
+$VERSION = '0.26';
 
 require Exporter;
 @ISA       = qw(Exporter);

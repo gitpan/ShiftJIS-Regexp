@@ -1,3 +1,7 @@
+######################### We start with some black magic to print on failure.
+
+use strict;
+use vars qw($loaded);
 
 BEGIN { $| = 1; print "1..10\n"; }
 END {print "not ok 1\n" unless $loaded;}

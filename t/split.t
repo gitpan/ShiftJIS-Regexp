@@ -1,3 +1,5 @@
+######################### We start with some black magic to print on failure.
+
 use strict;
 use vars qw($loaded);
 

@@ -4,7 +4,7 @@ use Carp;
 
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.25';
+$VERSION = '0.26';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 use vars qw(%Err %Re $Char $PadA $PadG $PadGA);
@@ -455,6 +455,14 @@ B<C<o> modifier>
 =item C<match(STRING, PATTERN, MODIFIER)>
 
 An emulation of C<m//> operator for the Shift_JIS encoding.
+But, to emulate C<@list = $string =~ m/PATTERN/g>,
+the pattern should be parenthesized
+(capturing parentheses are not added automatically).
+
+    $string = "‚ ‚¢‚¤‚¦‚¨";
+
+    @list = match($string, '[‚¢‚¦]', 'g');   # wrong
+    @list = match($string, '([‚¢‚¦])', 'g'); # good
 
 C<PATTERN> is specified as a string.
 

@@ -1,5 +1,9 @@
+######################### We start with some black magic to print on failure.
 
-BEGIN { $| = 1; print "1..11\n"; }
+use strict;
+use vars qw($loaded);
+
+BEGIN { $| = 1; print "1..15\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -84,15 +88,19 @@ print  match('--\\--', '\\\\')
  ( $] < 5.005 || match "‚ ‚¨‚P‚Q", '(?<=\pH{2})\pD{2}') 
     ? "ok" : "not ok", " 4\n";
 
-my $str = "!‚ ‚¢--‚¤‚¦‚¨00";
+{
+    my $aiu = "!‚ ‚¢--‚¤‚¦‚¨00";
+print 1
+   && "!””--”””00" eq replace($aiu, '[\pH]', '\x{8194}', 'g')
+   && "!””--”””00" eq replace($aiu, '[\p{Hiragana}]', '\x{8194}', 'g')
+   && "!”‚¢--‚¤‚¦‚¨00" eq replace($aiu, '\p{Hiragana}', '”')
+   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨‚¤‚¦‚¨00" eq replace($aiu, '(\pH+)', '${1}${1}', 'g')
+   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨00" eq replace($aiu, '(\pH+)', '${1}${1}')
+    ? "ok" : "not ok", " 5\n";
+}
 
 print 1
-   && "!””--”””00" eq replace($str, '[\pH]', '\x{8194}', 'g')
-   && "!””--”””00" eq replace($str, '[\p{Hiragana}]', '\x{8194}', 'g')
-   && "!”‚¢--‚¤‚¦‚¨00" eq replace($str, '\p{Hiragana}', '”')
    && "‚ \\0‚¢\\0‚ ‚¢" eq replace("‚ \0‚¢\0‚ ‚¢",'\0', '\\\\0', 'g')
-   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨‚¤‚¦‚¨00" eq replace($str,'(\pH+)', '${1}${1}', 'g')
-   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨00" eq replace($str,'(\pH+)', '${1}${1}')
    && "=ƒ}ƒ~=" eq replace('{ƒ}ƒ~}', '\{|\}', '=', 'g')
    && "‚ \n‚¢\n‚ ‚¢" eq replace("‚ \0‚¢\0‚ ‚¢",'\0', '\n', 'g')
    && '‚Œ' eq (match("‚o‚…‚’‚Œ",   '(\J)\Z'))[0]
@@ -104,7 +112,7 @@ print 1
    && 'ŽŽŽŽŽŽŽŽEŽŽŽŽŽŽŽŽE' eq replace('ŽŽŽŽŽŽŽŽEŽŽŽŽŽŽŽŽE', 'ŽE', 'E', 'g')
    && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
    && "a bDC123" eq replace("a b\n123", '$\j', "DC", 'm')
-    ? "ok" : "not ok", " 5\n";
+    ? "ok" : "not ok", " 6\n";
 
 print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
    && '‚ :‚¢‚¤@:‚¦‚¨@ƒ^' 
@@ -119,7 +127,7 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
 	eq '-:-‚Ü‚Â-:-‚µ‚Ü‚â‚ ‚ -:-‚Ü‚Â-:-‚µ‚Ü‚â-:-‚Ü‚Â-:-‚µ‚Ü‚â'
    && join('-:-', jsplit('(?j)ƒ’+', '‚ð‚ðA‚±‚ê‚ð‚Ý‚ë'))
 	eq '-:-A‚±‚ê-:-‚Ý‚ë'
-    ? "ok" : "not ok", " 6\n";
+    ? "ok" : "not ok", " 7\n";
 
 {
   local $^W = 0;
@@ -137,7 +145,7 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
     $str =~ s/$re/¶/g;
     $ng++ if $sjs ne $str;
   }
-  print !$ng ? "ok" : "not ok", " 7\n";
+  print !$ng ? "ok" : "not ok", " 8\n";
 }
 
 {
@@ -145,6 +153,7 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
   my $zen = "‚`‚a‚b‚c‚d‚e‚f‚g‚h‚i‚‚‚‚ƒ‚„‚…‚†‚‡‚ˆ‚‰‚Š‚O‚P‚Q‚R‚S";
   my $jpn = "‚ ‚¢‚¤‚¦‚¨‚©‚«‚­‚¯‚±ƒAƒCƒEƒGƒIƒJƒLƒNƒPƒR‚O‚P‚Q‚R‚S";
   my $perl = "‚‚…‚’‚Œ‚o‚d‚q‚kperlPERL‚Ï‚ ‚éƒpƒAƒ‹";
+
  print 1
    && "**CDEFGHIJKLMNO****TUVWXY***cdefghijklmno****tuvwxy*123456789+-="
        eq replace($str, '[abp-sz]', '*', 'ig')
@@ -154,6 +163,9 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
        eq replace($str, '[a-a_b-bx-z]', '*', 'ig')
    && "ABCDEFGHI*KLMNOPQRSTUVWXYZabcdefghi*klmnopqrstuvwxyz123456789+-="
        eq replace($str, '\c*', '*', 'ig')
+    ? "ok" : "not ok", " 9\n";
+
+ print 1
    && "*BCDEFGHIJKLMNOPQRSTUVWXYZ*bcdefghijklmnopqrstuvwxyz*********+-*"
        eq replace($str, '[0-A]', '*', 'ig')
    && "*************************************************************+-*"
@@ -166,7 +178,7 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
        eq replace($perl, '[‚e‚ ‚k]', '”', 'iIjg')
    && "”‚…‚’‚Œ‚o‚d‚q”p”rlP”RL‚Ï”‚éƒp”ƒ‹"
        eq replace($perl, '[‚e‚ ‚k]', '”', 'ijg')
-    ? "ok" : "not ok", " 8\n";
+    ? "ok" : "not ok", " 10\n";
 }
 
 print 1
@@ -176,22 +188,28 @@ print 1
   &&  match('P‚…r‚k', '^[[=p=]][[=‚d=]][[=‚’=]][[=L=]]$')
   &&  match('[a]', '^[[=[=]][[=\x41=]][[=]=]]$')
   &&  match('-m‚`n', '.[[=[=]][[=\x61=]][[=]=]]$')
-   ? "ok" : "not ok", " 9\n";
+   ? "ok" : "not ok", " 11\n";
 
-print $] < 5.005 ||
- ( 
-   "#\n#\n#a\n#bb\n#\n#cc\n#dd"
-      eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
-   && 'ZƒAƒCƒEƒGZƒAZƒAƒCƒEZƒA‹ƒA'
-      eq replace('ƒAƒCƒEƒGƒAƒAƒCƒEƒA‹ƒA', '(?=ƒA)', 'Z', 'gz')
-   && 'Z1Z2Z3Z1Z2Z3Z'
-      eq replace('0123000123', '0*', 'Z', 'g')
- )
-   ? "ok" : "not ok", " 10\n";
+if ($] < 5.005) {
+   print "ok 12\n";
+   print "ok 13\n";
+   print "ok 14\n";
+} else {
+   print 'ZƒAƒCƒEƒGZƒAZƒAƒCƒEZƒA‹ƒA'
+        eq replace('ƒAƒCƒEƒGƒAƒAƒCƒEƒA‹ƒA', '(?=ƒA)', 'Z', 'gz')
+      ? "ok" : "not ok", " 12\n";
+   print 'Z1Z2Z3Z1Z2Z3Z'
+        eq replace('0123000123', '0*', 'Z', 'g')
+   ? "ok" : "not ok", " 13\n";
+   print "#\n#\n#a\n#bb\n#\n#cc\n#dd"
+        eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
+      ? "ok" : "not ok", " 14\n";
+}
 
 print match('‚ ‚¢‚O‚P‚Q‚R', '\A\pH{2}\pD*\z')
    && match('‚ ‚¢‚O‚P‚Q‚R', '\A\ph{2}\pd*\z')
    && match('‚ ‚¢‚O‚P‚Q‚R', '\A\p{hiragana}{2}\p{digit}{4}\z')
    && match('‚ ‚¢‚O‚P‚Q‚R', '\A\p{IsHiragana}{2}\p{IsDigit}{4}\z')
    && match('‚ ‚¢‚O‚P‚Q‚R', '\A\p{InHiragana}{2}\p{InDigit}{4}\z')
-   ? "ok" : "not ok", " 11\n";
+   ? "ok" : "not ok", " 15\n";
+
