@@ -1,4 +1,4 @@
-ShiftJIS::Regexp: version 0.24
+ShiftJIS::Regexp: version 0.25
 ==============
 
 NAME
@@ -7,37 +7,37 @@ ShiftJIS::Regexp - Shift_JIS-oriented regular expressions on the byte-oriented p
 
 SYNOPSIS
 
-  use ShiftJIS::Regexp qw(:all);
-  match('‚ ‚¨‚P‚Q', '\p{Hiragana}{2}\p{Digit}{2}');
-  match('‚ ‚¢‚¢‚¤‚¤‚¤', '^‚ ‚¢+‚¤{3}$');
-  replace($str, 'A', '‚`', 'g');
+    use ShiftJIS::Regexp qw(:all);
+    match('‚ ‚¨‚P‚Q', '\p{Hiragana}{2}\p{Digit}{2}');
+    match('‚ ‚¢‚¢‚¤‚¤‚¤', '^‚ ‚¢+‚¤{3}$');
+    replace($str, 'A', '‚`', 'g');
 
 DESCRIPTION
 
-This module provides some functions for Shift_JIS-oriented regular expressions
-on the byte-oriented perl.
+This module provides some functions for regular expressions
+which are oriented to Shift_JIS and can be used on the byte-oriented perl.
 
-  re() returns a Shift_JIS-oriented regular expression parsable by the byte-oriented perl.
-  match() works like m/// but is oriented to Shift_JIS.
-  replace() works like s/// but is oriented to Shift_JIS.
-  jsplit() works like CORE::split but is oriented to Shift_JIS.
+    re() returns a Shift_JIS-oriented regular expression.
+    match() works like m/// but is oriented to Shift_JIS.
+    replace() works like s/// but is oriented to Shift_JIS.
+    jsplit() works like CORE::split but is oriented to Shift_JIS.
 
 INSTALLATION
 
 To install this module type the following:
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+    perl Makefile.PL
+    make
+    make test
+    make install
 
 PREREQUISITES
 
-Perl 5.003 or later.
+    Perl 5.003 or later.
 
 COPYRIGHT AND LICENCE
 
-Copyright(C) 2001, SADAHIRO Tomoyuki. Japan. All rights reserved.
+    Copyright(C) 2001, SADAHIRO Tomoyuki. Japan. All rights reserved.
 
-This program is free software; you can redistribute it and/or 
-modify it under the same terms as Perl itself.
+    This program is free software; you can redistribute it and/or
+    modify it under the same terms as Perl itself.

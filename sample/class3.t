@@ -37,17 +37,20 @@ my %res = (
   'space'	=> "\x20\x81\x40\x09-\x0D",
   'blank'	=> "\t\x20\x81\x40",
   'cntrl'	=> "\x00-\x1F\x7F",
-  'roman'	=> "\x00-\x7F",
   'ascii'	=> "\x00-\x7F",
+
+  'roman'	=> "\x21-\x7E",
   'hankaku'	=> "\xA1-\xDF",
   'zenkaku'	=> "\x81\x40-\xFC\xFC",
   'halfwidth'	=> '!#$%&()*+,./0-9:;<=>?@A-Z[\]^_`a-z{|}~',
   'fullwidth'	=> 'I”“•ij–{CD^‚O-‚XFGƒ„H—‚`-‚y'
 		 . 'mnOQM‚-‚šobpP',
 
-   'x0201'	=> "\x00-\x7F\xA1-\xDF",
+   'x0201'	=> "\x20-\x7F\xA1-\xDF",
+   'x0211'	=> "\x00-\x1F",
    'x0208'	=> '@-¬¸-¿È-ÎÚ-èð-÷ü‚O-‚X‚`-‚y‚-‚š'
 		 . '‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤',
+
    'JIS'	=> "\x00-\x7F\xA1-\xDF".'@-¬¸-¿È-ÎÚ-èð-÷ü'
 		 . '‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾'
 		 . 'ˆŸ-˜r˜Ÿ-ê¤',

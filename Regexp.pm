@@ -4,7 +4,7 @@ use Carp;
 
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.24';
+$VERSION = '0.25';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 use vars qw(%Err %Re $Char $PadA $PadG $PadGA);
@@ -640,21 +640,26 @@ to C<jsplit('', STRING, LIMIT)>.
    \p{Space}      \pS        [[:space:]]       [\x20\x{8140}\x09-\x0D]
    \p{Blank}      \pB        [[:blank:]]       [\x20\x{8140}\t]
    \p{Cntrl}      \pC        [[:cntrl:]]       [\x00-\x1F\x7F]
+   \p{ASCII}                 [[:ascii:]]       [\x00-\x7F]
 
-   \p{Roman}      \pR        [[:roman:]]       [\x00-\x7F]
-   \p{ASCII}                 [[:ascii:]]       [\p{Roman}]
+   \p{Roman}      \pR        [[:roman:]]       [\x21-\x7E]
    \p{Hankaku}    \pY        [[:hankaku:]]     [\xA1-\xDF]
    \p{Zenkaku}    \pZ        [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
-   \p{Halfwidth}             [[:halfwidth:]]   [!#$%&()*+,./0-9:;<=>?@A-Z\[\\\]^_`a-z{|}~]
-   \p{Fullwidth}  \pF        [[:fullwidth:]]   [I”“•ij–{CD^‚O-‚XFGƒ„H—‚`-‚ymnOQM‚-‚šobpP]
 
-   \p{X0201}                 [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
+ ( \p{^Zenkaku}   \PZ        [[:^zenkaku:]]    [\x00-\x7F\xA1-\xDF] )
+
+   \p{X0201}                 [[:x0201:]]       [\x20-\x7F\xA1-\xDF]
    \p{X0208}                 [[:x0208:]]       [\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
-   \p{JIS}        \pJ        [[:jis:]]         [\p{X0201}\p{X0208}]
+   \p{X0211}                 [[:x0211:]]       [\x00-\x1F]
+   \p{JIS}        \pJ        [[:jis:]]         [\p{X0201}\p{X0208}\p{X0211}]
+
    \p{NEC}        \pN        [[:nec:]]         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}\x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
    \p{IBM}        \pI        [[:ibm:]]         [\x{fa40}-\x{fc4b}]
    \p{Vendor}     \pV        [[:vendor:]]      [\p{NEC}\p{IBM}]
    \p{MSWin}      \pM        [[:mswin:]]       [\p{JIS}\p{NEC}\p{IBM}]
+
+   \p{Halfwidth}             [[:halfwidth:]]   [!#$%&()*+,./0-9:;<=>?@A-Z\[\\\]^_`a-z{|}~]
+   \p{Fullwidth}  \pF        [[:fullwidth:]]   [I”“•ij–{CD^‚O-‚XFGƒ„H—‚`-‚ymnOQM‚-‚šobpP]
 
    \p{Latin}                 [[:latin:]]       [A-Za-z]
    \p{FullLatin}             [[:fulllatin:]]   [‚`-‚y‚-‚š]
