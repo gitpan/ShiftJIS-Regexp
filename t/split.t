@@ -4,7 +4,7 @@
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..8\n"; }
+BEGIN { $| = 1; print "1..9\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -102,3 +102,9 @@ sub printH2Z {
   }
   print !$NG ? "ok" : "not ok", " 8\n";
 }
+
+print join('ー', jsplit ['あ', 'j'], '01234あいうえおアイウエオ')
+	eq '01234ーいうえおーイウエオ'
+   && join('ー', jsplit ['(あ)', 'j'], '01234あいうえおアイウエオ')
+	eq '01234ーあーいうえおーアーイウエオ'
+ ? "ok" : "not ok", " 9\n";

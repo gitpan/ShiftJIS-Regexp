@@ -8,13 +8,20 @@ require Exporter;
 
 @ISA = qw(Exporter);
 
-my @f = qw(issjis re match replace mkclass jsplit splitchar splitspace rechar);
+my @Re    = qw(re  mkclass  rechar);
+my @Split = qw(jsplit splitchar splitspace);
+my @Op    = qw(match replace);
 
 @EXPORT      = ();
-@EXPORT_OK   = (@f);
-%EXPORT_TAGS = (all => \@f);
+@EXPORT_OK   = (@Re, @Op, @Split);
+%EXPORT_TAGS = (
+	re	=> \@Re,
+	op	=> \@Op,
+	split	=> \@Split,
+	all	=> [@Re, @Op, @Split],
+);
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 my $Msg_unm = 'ShiftJIS::Regexp Unmatched [ character class';
 my $Msg_ilb = 'ShiftJIS::Regexp Illegal byte in class (following [)';
@@ -195,7 +202,7 @@ my %Class = (
   kana      => 'InKana',
 );
 
-sub issjis { $_[0] =~ /^$Char*$/ ? 1 : '' }
+my(%Cache);
 
 sub re {
   my($flag);
@@ -205,14 +212,17 @@ sub re {
   my $m = $mod =~ /m/;
   my $x = $mod =~ /x/;
   my $h = $mod =~ /h/;
-  my $b = $mod =~ /b/; #DEBUG
-  my $res = $m && $s ? '(?ms)' : $m ? '(?m)' : $s ? '(?s)' : '';
+
   return $pat if $mod =~ /n/;
-  for($pat){
+  if($mod =~ /o/ && defined $Cache{$pat}{$mod}){
+    return $Cache{$pat}{$mod};
+  }
+  my $res = $m && $s ? '(?ms)' : $m ? '(?m)' : $s ? '(?s)' : '';
+  my $tmppat = $pat;
+  for($tmppat){
     while(length){
       if(s/^(\(\?[p?]?{)//){
         $res .= $1;
-        $res .= '{' if $b; #DEBUG
         my $count = 1;
         while($count && length){
           if(s/^(\x5C[\x00-\xFC])//){
@@ -236,16 +246,15 @@ sub re {
           croak $Msg_cod;
         }
         if(s/^\)//){
-          $res .= '}' if $b; #DEBUG
           $res .= ')';
           next;
         }
         croak $Msg_cod;
       }
       if(s/^\x5B(\^?)(\x5D?
-	(?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\x5Cc?[\x5C\x5D]
-	|\x5C?(?![\x5C\x5D])$Char
-	)*
+        (?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\x5Cc?[\x5C\x5D]
+        |\x5C?(?![\x5C\x5D])$Char
+        )*
       )\x5D//ox)
       {
         my($not,$cls) = ($1,$2);
@@ -308,7 +317,7 @@ sub re {
         next;
       }
       if(s/^\\c([\x00-\x7F])//){
-        $res = rechar(chr(ord(uc $1) ^ 64), $mod);
+        $res .= rechar(chr(ord(uc $1) ^ 64), $mod);
         next;
       }
       if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
@@ -346,7 +355,7 @@ sub re {
       croak sprintf $Msg_odd, ord;
     }
   }
-  return $res;
+  return $mod =~ /o/ ? ($Cache{$pat}{$mod} = $res) : $res;
 }
 
 sub rechar {
@@ -573,13 +582,13 @@ sub mkclass {
   return '(?:' . join('|', @res) . ')';
 }
 
-sub __ord{
+sub __ord {
   my $c = shift;
   $c =~ s/^\x5C//;
   length($c) > 1 ? unpack('n', $c) : ord($c);
 }
 
-sub __chr{
+sub __ord2{
   my $c = shift;
   0xFF < $c ? unpack('C*', pack 'n', $c) : chr($c);
 }
@@ -621,8 +630,8 @@ sub __expand {
   $ini = $fr < 0x8140 ? 0x8140 : $fr;
   $fin = $to > 0xFCFC ? 0xFCFC : $to;
   if($ini <= $fin){
-    ($ini_f,$ini_t) = __chr($ini);
-    ($fin_f,$fin_t) = __chr($fin);
+    ($ini_f,$ini_t) = __ord2($ini);
+    ($fin_f,$fin_t) = __ord2($fin);
 
     if($ini_f == $fin_f){
       push @retd,
@@ -681,8 +690,8 @@ sub __expand {
   }
   if($mod =~ /I/){
     for(
-      [0x8260, 0x8279, +33], # Full A to full Z
-      [0x8281, 0x829A, -33], # Full a to full z
+      [0x8260, 0x8279, +33], # Full A to Z
+      [0x8281, 0x829A, -33], # Full a to z
       [0x839F, 0x83B6, +32], # Greek Alpha to Omega
       [0x83BF, 0x83D6, -32], # Greek alpha to omega
       [0x8440, 0x844E, +48], # Cyrillic A to N
@@ -691,8 +700,8 @@ sub __expand {
       [0x8480, 0x8491, -49], # Cyrillic o to ya
     ){
       if($fr <= $_->[1] && $_->[0] <= $to){
-        ($ini_f,$ini_t) = __chr($fr <= $_->[0] ? $_->[0] : $fr);
-        ($fin_f,$fin_t) = __chr($_->[1] <= $to ? $_->[1] : $to);
+        ($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
+        ($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
         push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
 		$ini_f, $ini_t + $_->[2], $fin_t + $_->[2]);
       }
@@ -708,8 +717,8 @@ sub __expand {
       [0x8154, 0x8155, -2,    0x81], # Hiragana Iteration Marks
     ){
       if($fr <= $_->[1] && $_->[0] <= $to){
-        ($ini_f,$ini_t) = __chr($fr <= $_->[0] ? $_->[0] : $fr);
-        ($fin_f,$fin_t) = __chr($_->[1] <= $to ? $_->[1] : $to);
+        ($ini_f,$ini_t) = __ord2($fr <= $_->[0] ? $_->[0] : $fr);
+        ($fin_f,$fin_t) = __ord2($_->[1] <= $to ? $_->[1] : $to);
         push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
 		$_->[3], $ini_t + $_->[2], $fin_t + $_->[2]);
       }
@@ -751,8 +760,9 @@ sub _splitchar{ $_[0] =~ /$Char/go }
 # 
 ############################################################################
 sub jsplit{
-  my($pat, $str, $lim, $cnt, @mat, @ret);
-  $pat = re(shift);
+  my($thing, $pat, $str, $lim, $cnt, @mat, @ret);
+  $thing = shift;
+  $pat = 'ARRAY' eq ref $thing ? re(@$thing) : re($thing);
   $str = shift;
   $lim = shift || 0;
   return splitchar($str, $lim) if '' eq $pat;
@@ -833,11 +843,6 @@ The legal Shift_JIS character in this module must match the following regexp:
 
 =over 4
 
-=item C<issjis(STRING)>
-
-Returns a boolean indicating whether the string
-is legally encoded in Shift_JIS.
-
 =item C<re(PATTERN)>
 
 =item C<re(PATTERN, MODIFIER)>
@@ -858,10 +863,25 @@ MODIFIER is specified as a string.
      x  ignore whitespace (i.e. [ \n\r\t\f], but not comments!)
         unless backslashed or inside a character class
 
+     o  once parsed (not compiled!) and the result is cached internally.
+
 C<re('^コンピューター?$')> matches C<'コンピューター'> or C<'コンピュータ'>.
 
 C<re('^らくだ$','j')> matches C<'らくだ'>, C<'ラクダ'>, C<'らクだ'>, etc.
 
+B<C<o> modifier>
+
+     while(<DATA>){
+       print replace($_, '(perl)', '<strong>$1</strong>', 'igo');
+     }
+        is more efficient than
+
+     while(<DATA>){
+       print replace($_, '(perl)', '<strong>$1</strong>', 'ig');
+     }
+
+     because in the latter case the pattern is parsed every time
+     whenever the function is called.
 
 =item C<match(STRING, PATTERN)>
 
@@ -885,6 +905,8 @@ MODIFIER is specified as a string.
      g  match globally
      z  tell the function the pattern matches zero-length substring
            (sorry, due to the poor auto-detection)
+
+     o  once parsed (not compiled!) and the result is cached internally.
 
 =item C<replace(STRING or SCALAR REF, PATTERN, REPLACEMENT)>
 
@@ -917,22 +939,43 @@ MODIFIER is specified as a string.
      z  tell the function the pattern matches zero-length substring
            (sorry, due to the poor auto-detection)
 
-=item C<jsplit(PATTERN, STRING)>
+     o  once parsed (not compiled!) and the result is cached internally.
 
-=item C<jsplit(PATTERN, STRING, LIMIT)>
+=item C<jsplit(PATTERN or ARRAY REF of [PATTERN, MODIFIER], STRING)>
+
+=item C<jsplit(PATTERN or ARRAY REF of [PATTERN, MODIFIER], STRING, LIMIT)>
 
 This function emulates C<CORE::split>.
 
 If not in list context, these functions do only return the number of fields
 found, but do not split into the C<@_> array.
 
+PATTERN is specified as a string.
+
 But C<' '> as C<PATTERN> has no special meaning;
 when you want to split the string on whitespace,
 you can use C<splitspace()> function.
 
-You should specify C<PATTERN> as a string.
+    jsplit('／', 'あいう／えおメ^');
 
-   jsplit('／', 'あいう／えおメ^');
+MODIFIER is specified as a string.
+
+     i  do case-insensitive pattern matching (only for ascii alphabets)
+     I  do case-insensitive pattern matching
+        (greek, cyrillic, fullwidth latin)
+     j  do hiragana-katakana-insensitive pattern matching
+
+     s  treat string as single line
+     m  treat string as multiple lines
+     x  ignore whitespace (i.e. [ \n\r\t\f], but not comments!)
+        unless backslashed or inside a character class
+
+     o  once parsed (not compiled!) and the result is cached internally.
+
+If you want to pass pattern with modifiers,
+specify an arrayref of C<[PATTERN, MODIFIER]> as the first argument.
+
+    jsplit([ 'あ', 'j' ], '01234あいうえおアイウエオ');
 
 =item C<splitspace(STRING)>
 
@@ -1127,9 +1170,10 @@ must match the following regexp:
    [\x00-\x7F\xA1-\xDF]|[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]
 
 Any string from external resource should be checked by C<issjis()>
-function, excepting you know it is surely encoded in Shift_JIS.
-If an illegal Shift_JIS string is specified,
-the result should be unexpectable.
+function of C<ShiftJIS::String>, excepting you know
+it is surely encoded in Shift_JIS.
+
+Use of an illegal Shift_JIS string may lead to odd results.
 
 Some Shift_JIS double-byte characters have one of C<[\x40-\x7E]>
 as the trail byte.
@@ -1199,6 +1243,6 @@ Tomoyuki SADAHIRO
 
 =head1 SEE ALSO
 
-perl(1).
+perl(1), ShiftJIS::String
 
 =cut

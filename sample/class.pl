@@ -268,15 +268,11 @@ my %res = (
 my($mod,$OK,$r,$cl);
 for $r (sort keys %res){
   print "$r\n";
-  my $rr = $r;
-  $mod = $rr =~ s/\(\?i\)// ? 'i' : '';
-  my $re = re($rr,$mod);
+  my $re = "^$r\$";
+  $mod = $re =~ s/\(\?i\)// ? 'io' : 'o';
 # printf RE "%s\n    %s\n", $r, $re;  next;
   for $cl (0..$#cls){
-
-#    my $a = match(join('', @{ $char{ $cls[ $cl ] } }), "^$r+\$");
-
-    my $match = grep(match($_, "^$re\$", 'n'), @{ $char{ $cls[ $cl ] } });
+    my $match = grep(match($_, $re, $mod), @{ $char{ $cls[ $cl ] } });
     my $a = $match == @{ $char{ $cls[ $cl ] } } ? 1 : $match == 0 ? 0 : -1;
 
     my $msg = $a == $res{ $r }[$cl] ? "ok" : "not ok";
