@@ -1,4 +1,4 @@
-ShiftJIS::Regexp: version 0.19
+ShiftJIS::Regexp: version 0.20
 ==============
 
 NAME
@@ -8,7 +8,7 @@ ShiftJIS::Regexp - Shift_JIS-oriented regexps on the byte-oriented perl
 SYNOPSIS
 
   use ShiftJIS::Regexp qw(:all);
-  match('‚ ‚¨‚P‚Q', '\p{InHiragana}{2}\p{IsDigit}{2}');
+  match('‚ ‚¨‚P‚Q', '\p{Hiragana}{2}\p{Digit}{2}');
   match('‚ ‚¢‚¢‚¤‚¤‚¤', '^‚ ‚¢+‚¤{3}$');
   replace($str, 'A', '‚`', 'g');
 

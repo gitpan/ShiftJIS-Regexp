@@ -2,6 +2,8 @@
 
 use ShiftJIS::Regexp qw(:all);
 
+# open FH, ">range.txt"; select FH;
+
 for(qw/
  [A-A]
  [\xA1-\xDf]
@@ -10,7 +12,7 @@ for(qw/
  [\x7f-\xa1]
  [\cJ-\xa2]
  [\0-\x{fcfc}]
- [\x{8F7e}-\xe1\xfc]
+ [\x{8F7e}-\x{e1fc}]
  [\x{8140}-\x{fcfc}]
  [\x{9e80}-\x{e0fc}]
  [\x{9e80}-\x{e081}]

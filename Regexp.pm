@@ -4,7 +4,7 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.19';
+$VERSION = '0.20';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 require Exporter;
@@ -39,15 +39,16 @@ my $ErrInvalFlw = $PACKAGE.' Invalid byte "\\x%02x" following "%s" (only "%s" al
 
 
 
-my $SBC = '[\x00-\x7F\xA1-\xDF]';
-my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
+my $SBC   = '[\x00-\x7F\xA1-\xDF]';
+my $Trail = '[\x40-\x7E\x80-\xFC]';
+my $DBC   = '[\x81-\x9F\xE0-\xFC]'. $Trail;
 
 my $Char = "(?:$SBC|$DBC)";
 
 my $Apad  = '(?:\A|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
 my $Gpad  = '(?:\G|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
-my $GApad = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?|'
-          . '[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
+my $GApad = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?'
+          . '|[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
 
 my $Open = 5.005 > $] ? '(?:' : '(?-i:';
 my $Close = ')';
@@ -68,53 +69,47 @@ my %Re = (
 		. $DBC .$Close,
 
   '\p{digit}' => $Open.'[\x30-\x39]|\x82[\x4F-\x58]'.$Close,
-  '\P{digit}' => $Open.'[\x00-\x2F\x3A-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC]'
-		. '[\x40-\x7E\x80-\xFC]|\x82[\x40-\x4E\x59-\x7E\x80-\xFC]'
+  '\P{digit}' => $Open.'[\x00-\x2F\x3A-\x7F\xA1-\xDF]'
+		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. '|\x82[\x40-\x4E\x59-\x7E\x80-\xFC]'
 		. $Close,
 
   '\p{upper}' => $Open.'[\x41-\x5A]|\x82[\x60-\x79]'.$Close,
-  '\P{upper}' => $Open.'[\x00-\x40\x5B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x5F\x7A-\x7E\x80-\xFC]'
+  '\P{upper}' => $Open.'[\x00-\x40\x5B-\x7F\xA1-\xDF]'
+		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. '|\x82[\x40-\x5F\x7A-\x7E\x80-\xFC]'
 		. $Close,
 
   '\p{lower}' => $Open.'[\x61-\x7A]|\x82[\x81-\x9A]'.$Close,
-  '\P{lower}' => $Open.'[\x00-\x60\x7B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x7E\x80\x9B-\xFC]'
-		. $Close,
+  '\P{lower}' => $Open.'[\x00-\x60\x7B-\x7F\xA1-\xDF]'
+		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. '|\x82[\x40-\x7E\x80\x9B-\xFC]'. $Close,
 
   '\p{alpha}' => $Open.'[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A]'.$Close,
-  '\P{alpha}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC]'
-		. $Close,
+  '\P{alpha}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]'
+		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. '|\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC]'. $Close,
 
   '\p{alnum}' => $Open.'[0-9A-Za-z]|\x82[\x4F-\x58\x60-\x79\x81-\x9A]'.$Close,
-  '\P{alnum}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
-		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
-		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC]'
-		. $Close,
+  '\P{alnum}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]'
+		. '|[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
+		. '|\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC]'. $Close,
 
   '\p{space}' => $Open.'[\x09\x0A\x0C\x0D\x20]|\x81\x40'.$Close,
-  '\P{space}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|'
-		. '\x81[\x41-\x7E\x80-\xFC]|'
-		. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
-		. $Close,
+  '\P{space}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]'
+		. '|\x81[\x41-\x7E\x80-\xFC]'
+		. '|[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'. $Close,
 
-  '\p{punct}' => $Open.'[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]|'
-		. '\x81[\x41-\x49\x4C-\x51\x5C-\x7E\x80-\xAC\xB8-\xBF'
-		. '\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|\x84[\x9F-\xBE]'
-		. $Close,
-  '\P{punct}' => $Open.'[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]|'
-		. '\x81[\x40\x4A\x4B\x52-\x5B\xAD-\xB7\xC0-\xC7\xCF-\xD9'
-		. '\xE9-\xEF\xF8-\xFB]|\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]|'
-		. '[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'
-		. $Close,
+  '\p{punct}' => $Open.'[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]'
+		. '|\x81[\x41-\x49\x4C-\x51\x5C-\x7E\x80-\xAC\xB8-\xBF'
+		. '\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|\x84[\x9F-\xBE]'. $Close,
+  '\P{punct}' => $Open.'[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]'
+		. '|\x81[\x40\x4A\x4B\x52-\x5B\xAD-\xB7\xC0-\xC7\xCF-\xD9'
+		. '\xE9-\xEF\xF8-\xFB]|\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]'
+		. '|[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'. $Close,
 
-  '\p{graph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]|'
-			. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'.$Close,
+  '\p{graph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]'
+		. '|[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]'.$Close,
   '\P{graph}' => $Open.'[\x00-\x20\x7F]|\x81\x40'.$Close,
 
   '\p{print}' => $Open.'[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' .$DBC.$Close,
@@ -730,36 +725,37 @@ sub rechar
 	: sprintf('\\x%02x', ord $c);
   }
   my ($d) = ord substr($c,1,1); # the trail byte
-  return
+  my $rechar =
 	   $c =~ /^\x82([\x60-\x79])$/ && $mod =~ /I/
-	? sprintf($Open.'\x82[\x%02x\x%02x])', $d, $d+33)
+	? sprintf('\x82[\x%02x\x%02x]', $d, $d+33)
 	:  $c =~ /^\x82([\x81-\x9A])$/ && $mod =~ /I/
-	? sprintf($Open.'\x82[\x%02x\x%02x])', $d, $d-33)
+	? sprintf('\x82[\x%02x\x%02x]', $d, $d-33)
 	:  $c =~ /^\x83([\x9F-\xB6])$/ && $mod =~ /I/
-	? sprintf($Open.'\x83[\x%02x\x%02x])', $d, $d+32)
+	? sprintf('\x83[\x%02x\x%02x]', $d, $d+32)
 	:  $c =~ /^\x83([\xBF-\xD6])$/ && $mod =~ /I/
-	? sprintf($Open.'\x83[\x%02x\x%02x])', $d, $d-32)
+	? sprintf('\x83[\x%02x\x%02x]', $d, $d-32)
 	:  $c =~ /^\x84([\x40-\x4E])$/ && $mod =~ /I/
-	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d+48)
+	? sprintf('\x84[\x%02x\x%02x]', $d, $d+48)
 	:  $c =~ /^\x84([\x4F-\x60])$/ && $mod =~ /I/
-	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d+49)
+	? sprintf('\x84[\x%02x\x%02x]', $d, $d+49)
 	:  $c =~ /^\x84([\x70-\x7E])$/ && $mod =~ /I/
-	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d-48)
+	? sprintf('\x84[\x%02x\x%02x]', $d, $d-48)
 	:  $c =~ /^\x84([\x80-\x91])$/ && $mod =~ /I/
-	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d-49)
+	? sprintf('\x84[\x%02x\x%02x]', $d, $d-49)
         :  $c =~ /^\x82([\x9F-\xDD])$/ && $mod =~ /j/
-	? sprintf($Open.'\x82\x%02x|\x83\x%02x)', $d, $d-0x5F)
+	? sprintf('\x82\x%02x|\x83\x%02x', $d, $d-0x5F)
 	:  $c =~ /^\x82([\xDE-\xF1])$/ && $mod =~ /j/
-	? sprintf($Open.'\x82\x%02x|\x83\x%02x)', $d, $d-0x5E)
+	? sprintf('\x82\x%02x|\x83\x%02x', $d, $d-0x5E)
 	:  $c =~ /^\x83([\x40-\x7E])$/ && $mod =~ /j/
-	? sprintf($Open.'\x83\x%02x|\x82\x%02x)', $d, $d+0x5F)
+	? sprintf('\x83\x%02x|\x82\x%02x', $d, $d+0x5F)
 	:  $c =~ /^\x83([\x80-\x93])$/ && $mod =~ /j/
-	? sprintf($Open.'\x83\x%02x|\x82\x%02x)', $d, $d+0x5E)
+	? sprintf('\x83\x%02x|\x82\x%02x', $d, $d+0x5E)
 	:  $c =~ /^\x81([\x52-\x53])$/ && $mod =~ /j/
-	? sprintf($Open.'\x81[\x%02x\x%02x])', $d, $d+2)
+	? sprintf('\x81[\x%02x\x%02x]', $d, $d+2)
 	:  $c =~ /^\x81([\x54-\x55])$/ && $mod =~ /j/
-	? sprintf($Open.'\x81[\x%02x\x%02x])', $d, $d-2)
-	: sprintf($Open.'\x%02x\x%02x)', unpack 'C2', $c)
+	? sprintf('\x81[\x%02x\x%02x]', $d, $d-2)
+	: sprintf('\x%02x\x%02x', unpack 'C2', $c);
+    return "$Open$rechar$Close";
 }
 
 
@@ -868,7 +864,6 @@ sub __expand
   $mod ||= '';
   my($ini, $fin, $i, $ch, @retv, @retd, $add);
   my($ini_f, $fin_f, $ini_t, $fin_t, $ini_c, $fin_c);
-  my $trail = '[\x40-\x7e\x80-\xfc]';
 
   if($fr > $to){ croak sprintf($ErrReverse, $fr, $to) }
   if($fr <= 0x7F){
@@ -883,7 +878,7 @@ sub __expand
             $add .= lc(chr $i) if 0x41 <= $i && $i <= 0x5A;
             $add .= uc(chr $i) if 0x61 <= $i && $i <= 0x7A;
          }
-      }else{$add = ''}
+      } else {$add = ''}
       push @retv, sprintf "[\\x%02x-\\x%02x$add]", $ini, $fin;
     }
   }
@@ -891,10 +886,10 @@ sub __expand
     $ini = $fr < 0xA1 ? 0xA1 : $fr;
     $fin = $to > 0xDF ? 0xDF : $to;
     if($ini == $fin){
-      push @retv, sprintf('\\x%2x', $ini);
+      push @retd, sprintf('\\x%2x', $ini);
     }
     elsif($ini < $fin){
-      push @retv, sprintf('[\\x%2x-\\x%2x]', $ini, $fin);
+      push @retd, sprintf('[\\x%2x-\\x%2x]', $ini, $fin);
     }
   }
   $ini = $fr < 0x8140 ? 0x8140 : $fr;
@@ -933,18 +928,20 @@ sub __expand
       }
       if($ini_c > $fin_c) { 1 }
       else {
-        push @retd,
-	  $ini_c == $fin_c ?
-	    sprintf('\x%2x'.$trail, $ini_c) :
-	  $fin_c <= 0x9F || 0xE0 <= $ini_c ?
-	    sprintf('[\x%2x-\x%2x]'.$trail, $ini_c, $fin_c) :
-	  $ini_c == 0x9F && $fin_c == 0xE0 ?
-	    '[\x9f\xe0]'.$trail :
-	  $ini_c == 0x9F ?
-	    sprintf('[\x9f\xe0-\x%2x]'.$trail, $fin_c) :
-	  $fin_c == 0xE0 ?
-	    sprintf('[\x%2x-\x9f\xe0]'.$trail, $ini_c) :
-	  sprintf('[\x%2x-\x9f\xe0-\x%2x]'.$trail, $ini_c, $fin_c);
+        my $lead = 
+	  $ini_c == $fin_c
+	    ?  sprintf('\x%2x', $ini_c) :
+	  $fin_c <= 0x9F || 0xE0 <= $ini_c
+	    ? sprintf('[\x%2x-\x%2x]', $ini_c, $fin_c) :
+	  $ini_c == 0x9F && $fin_c == 0xE0
+	    ? '[\x9f\xe0]' :
+	  $ini_c == 0x9F
+	    ? sprintf('[\x9f\xe0-\x%2x]', $fin_c) :
+	  $fin_c == 0xE0
+	    ? sprintf('[\x%2x-\x9f\xe0]', $ini_c)
+	    : sprintf('[\x%2x-\x9f\xe0-\x%2x]', $ini_c, $fin_c);
+
+        push @retd, $lead.$Trail;
       }
       if($fin_t != 0xFC){
         push @retd,
@@ -994,7 +991,7 @@ sub __expand
       }
     }
   }
-  return(@retv, @retd ? $Open.join('|',@retd).')' : ());
+  return(@retv, @retd ? $Open.join('|',@retd).$Close : ());
 }
 
 
@@ -1104,8 +1101,12 @@ ShiftJIS::Regexp - Shift_JIS-oriented regexps on the byte-oriented perl
 
   use ShiftJIS::Regexp qw(:all);
 
-  match('‚ ‚¨‚P‚Q', '\p{InHiragana}{2}\p{IsDigit}{2}');
+  match('‚ ‚¨‚P‚Q', '\p{Hiragana}{2}\p{Digit}{2}');
+# that is equivalant to this:
+  match('‚ ‚¨‚P‚Q', '\pH{2}\pD{2}');
+
   match('‚ ‚¢‚¢‚¤‚¤‚¤', '^‚ ‚¢+‚¤{3}$');
+
   replace($str, 'A', '‚`', 'g');
 
 =head1 DESCRIPTION
@@ -1195,9 +1196,8 @@ returns the number of substitutions made.
 If a string is specified as the first argument,
 returns the substituted string and the specified string is unaffected.
 
-    my $d = '\p{IsDigit}';
     my $str = '‹à‚P‚T‚R‚O‚O‚O‚O‰~';
-    1 while replace(\$str, "($d)($d$d$d)(?!$d)", '$1C$2');
+    1 while replace(\$str, '(\pD)(\pD{3})(?!\pD)', '$1C$2');
     print $str; # ‹à‚PC‚T‚R‚OC‚O‚O‚O‰~
 
 C<MODIFIER> is specified as a string.
@@ -1333,30 +1333,24 @@ and returns the array given by split of the specified string into characters.
    \p{Alnum}     [\pA\pD]    [[:alnum:]]       [0-9A-Za-z‚O-‚X‚`-‚y‚-‚š]
 
    \p{Word}       \pW        [[:word:]]        [_\p{Digit}\p{European}\p{Kana}\p{Kanji}]
-          [0-9A-Z_a-z‚O-‚X‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘¦-ß‚Ÿ-‚ñƒ@-ƒ–JKR-[ˆŸ-˜r˜Ÿ-ê¤]
 
-   \p{Punct}      \pP        [[:punct:]]
-                [!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
+   \p{Punct}      \pP        [[:punct:]]       [!-/:-@[-`{-~¡-¥A-IL-Q\-¬¸-¿È-ÎÚ-èğ-÷ü„Ÿ-„¾]
 
-   \p{Space}      \pS        [[:space:]]       [\t\n\r\f \x{8140}]
-   \p{Graph}      \pG        [[:graph:]]       [^\0- \x7F\x{8140}]
-   \p{Print}     [\pS\pG]    [[:print:]]       [^\0- \x0B\x0E-\x1F\x7F]
+   \p{Space}      \pS        [[:space:]]       [\t\n\r\f\x20\x{8140}]
+   \p{Graph}      \pG        [[:graph:]]       [^\0-\x20\x7F\x{8140}]
+   \p{Print}     [\pS\pG]    [[:print:]]       [^\0-\x08\x0B\x0E-\x1F\x7F]
    \p{Cntrl}      \pC        [[:cntrl:]]       [\x00-\x1F]
 
    \p{Roman}      \pR        [[:roman:]]       [\x00-\x7F]
-   \p{ASCII}                 [[:ascii:]]       \p{Roman}
+   \p{ASCII}                 [[:ascii:]]       [\p{Roman}]
    \p{Hankaku}               [[:hankaku:]]     [\xA1-\xDF]
    \p{Zenkaku}    \pZ        [[:zenkaku:]]     [\x{8140}-\x{FCFC}]
 
    \p{X0201}                 [[:x0201:]]       [\x00-\x7F\xA1-\xDF]
-   \p{X0208}                 [[:x0208:]]
-          [\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
-
+   \p{X0208}                 [[:x0208:]]       [\x{8140}-¬¸-¿È-ÎÚ-èğ-÷ü‚O-‚X‚`-‚y‚-‚š‚Ÿ-‚ñƒ@-ƒ–ƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘„Ÿ-„¾ˆŸ-˜r˜Ÿ-ê¤]
    \p{JIS}        \pJ        [[:jis:]]         [\p{X0201}\p{X0208}]
 
-   \p{NEC}        \pN        [[:nec:]]
-         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}\x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
-
+   \p{NEC}        \pN        [[:nec:]]         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}\x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
    \p{IBM}        \pI        [[:ibm:]]         [\x{fa40}-\x{fc4b}]
    \p{Vendor}     \pV        [[:vendor:]]      [\p{NEC}\p{IBM}]
    \p{MSWin}      \pM        [[:mswin:]]       [\p{JIS}\p{NEC}\p{IBM}]
@@ -1366,6 +1360,7 @@ and returns the array given by split of the specified string into characters.
    \p{Greek}                 [[:greek:]]       [ƒŸ-ƒ¶ƒ¿-ƒÖ]
    \p{Cyrillic}              [[:cyrillic:]]    [„@-„`„p-„‘]
    \p{European}   \pE        [[:european:]]    [A-Za-z‚`-‚y‚-‚šƒŸ-ƒ¶ƒ¿-ƒÖ„@-„`„p-„‘]
+
    \p{HalfKana}              [[:halfkana:]]    [¦-ß]
    \p{Hiragana}   \pH        [[:hiragana:]]    [‚Ÿ-‚ñJKTU]
    \p{Katakana}   \pK        [[:katakana:]]    [ƒ@-ƒ–[RS]
@@ -1381,6 +1376,27 @@ and returns the array given by split of the specified string into characters.
 
 =item *
 
+=over 4
+
+C<\p{NEC}> matches an NEC special character 
+or an NEC-selected IBM extended character.
+
+C<\p{IBM}> matches an IBM extended character.
+
+C<\p{Vendor}> matches a character of vendor-defined characters 
+in Microsoft CP932, i.e. equivalent to C<[\p{NEC}\p{IBM}]>.
+
+C<\p{MSWin}> matches a character of Microsoft CP932.
+
+C<\p{Kanji0}> matches a kanji of the minimum kanji class of JIS X 4061;
+C<\p{Kanji1}>, of the level 1 kanji of JIS X 0208;
+C<\p{Kanji2}>, of the level 2 kanji of JIS X 0208;
+C<\p{Kanji}>, of the basic kanji class of JIS X 4061.
+
+=back
+
+=item *
+
 C<\p{Prop}>, C<\P{^Prop}>, C<[\p{Prop}]>, etc. are equivalent to each other;
 and their complements are C<\P{Prop}>, C<\p{^Prop}>, C<[\P{Prop}]>,
 C<[^\p{Prop}]>, etc.
@@ -1388,20 +1404,25 @@ C<[^\p{Prop}]>, etc.
 C<\pP>, C<\P^P>, C<[\pP]>, etc. are equivalent to each other;
 and their complements are C<\PP>, C<\p^P>, C<[\PP]>, C<[^\pP]>, etc.
 
-=item *
-
 C<[[:class:]]>is equivalent to C<[^[:^class:]]>;
 and their complements are C<[[:^class:]]> or C<[^[:class:]]>.
-
-=item *
 
 In C<\p{Prop}>, C<\P{Prop}>, C<[:class:]> expressions,
 C<Prop> and C<class> are case-insensitive
 (e.g. C<\p{digit}>, C<[:BoxDrawings:]>).
 
+=item *
+
+Prefixes C<Is> and C<In> for C<\p{Prop}> and C<\P{Prop}>
+(e.g. C<\p{IsProp}>, C<\P{InProp}>, etc.) are optional.
+But C<\p{isProp}>, C<\p{ISProp}>, etc. are not ok,
+as C<Is> and C<In> are B<not> case-insensitive.
+Using of C<Is> and C<In> is deplicated since they may conflict
+with a property name beginning with C<'is'> or C<'in'> in future.
+
 =back
 
-=head2 Character classes
+=head2 Character Classes
 
 Ranges in character class are supported. 
 
@@ -1442,7 +1463,7 @@ C<[[=]=]]> matches C<RIGHT SQUARE BRACKET> or
 C<FULLWIDTH RIGHT SQUARE BRACKET>;
 C<[[=\=]]> matches C<YEN SIGN> or C<FULLWIDTH YEN SIGN>.
 
-=head2 Code Embedded in a Regexp (Perl 5.005 or later)
+=head2 Code Embedded in a Regular Expression (Perl 5.005 or later)
 
 Parsing C<(?{ ... })> or C<(??{ ... })> assertions is carried out
 without any special care of double-byte characters.

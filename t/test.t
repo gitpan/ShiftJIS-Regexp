@@ -3,7 +3,7 @@
 
 ######################### We start with some black magic to print on failure.
 
-BEGIN { $| = 1; print "1..10\n"; }
+BEGIN { $| = 1; print "1..11\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -83,21 +83,20 @@ print  match('--\\--', '\\\\')
    && !match('', '^ÉAÉCcÉE{3}$')
    &&  match("aaa\x1Caaa", '[\c\]')
    &&  match('ÉAÉCCÉEÉEÉE', '^ÉAÉCcÉE{3}$', 'i')
-   &&  match("Ç†Ç¢Ç§09", '^\p{Hiragana}{3}\p{Digit}{2}$')
+   &&  match("Ç†Ç¢Ç§09", '^\pH{3}\pD{2}$')
    &&
- ( $] < 5.005 || match "Ç†Ç®ÇPÇQ", '(?<=\p{InHiragana}{2})\p{IsDigit}{2}') 
+ ( $] < 5.005 || match "Ç†Ç®ÇPÇQ", '(?<=\pH{2})\pD{2}') 
     ? "ok" : "not ok", " 4\n";
 
 my $str = "!Ç†Ç¢--Ç§Ç¶Ç®00";
 
 print 1
+   && "!ÅîÅî--ÅîÅîÅî00" eq replace($str, '[\pH]', '\x{8194}', 'g')
    && "!ÅîÅî--ÅîÅîÅî00" eq replace($str, '[\p{Hiragana}]', '\x{8194}', 'g')
-   && "!ÅîÇ¢--Ç§Ç¶Ç®00" eq replace($str, '\p{InHiragana}', 'Åî')
+   && "!ÅîÇ¢--Ç§Ç¶Ç®00" eq replace($str, '\p{Hiragana}', 'Åî')
    && "Ç†\\0Ç¢\\0Ç†Ç¢" eq replace("Ç†\0Ç¢\0Ç†Ç¢",'\0', '\\\\0', 'g')
-   && "!Ç†Ç¢Ç†Ç¢--Ç§Ç¶Ç®Ç§Ç¶Ç®00"
-	 eq replace($str,'(\p{InHiragana}+)', '${1}${1}', 'g')
-   && "!Ç†Ç¢Ç†Ç¢--Ç§Ç¶Ç®00"
-	 eq replace($str,'(\p{InHiragana}+)', '${1}${1}')
+   && "!Ç†Ç¢Ç†Ç¢--Ç§Ç¶Ç®Ç§Ç¶Ç®00" eq replace($str,'(\pH+)', '${1}${1}', 'g')
+   && "!Ç†Ç¢Ç†Ç¢--Ç§Ç¶Ç®00" eq replace($str,'(\pH+)', '${1}${1}')
    && "=É}É~=" eq replace('{É}É~}', '\{|\}', '=', 'g')
    && "Ç†\nÇ¢\nÇ†Ç¢" eq replace("Ç†\0Ç¢\0Ç†Ç¢",'\0', '\n', 'g')
    && 'Çå' eq (match("ÇoÇÖÇíÇå",   '(\J)\Z'))[0]
@@ -105,7 +104,7 @@ print 1
    && "\n" eq (match("ÇoÇÖÇíÇå\n", '(\j)\z'))[0]
    && 'Çå' eq (match("ÇoÇÖÇíÇå",   '(\j)\z'))[0]
    && 'É`' eq (match("É}ÉbÉ`",   '(\j)\z'))[0]
-   && 'Ç©Ç¢' eq (match('ÇΩÇ©Ç¢Å@Ç©Ç¢ÇÎÇ§', '(\P{Space}+)\p{Space}*\1'))[0]
+   && 'Ç©Ç¢' eq (match('ÇΩÇ©Ç¢Å@Ç©Ç¢ÇÎÇ§', '(\PS+)\pS*\1'))[0]
    && 'ééééééééEééééééééE' eq replace('ééééééééEééééééééE', 'éE', 'E', 'g')
    && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
    && "a bDC123" eq replace("a b\n123", '$\j', "DC", 'm')
@@ -113,7 +112,7 @@ print 1
 
 print 'Ç†:Ç¢Ç§:Ç¶Ç®ÉÅ^' eq join(':', jsplit('Å^', 'Ç†Å^Ç¢Ç§Å^Ç¶Ç®ÉÅ^'))
    && 'Ç†:Ç¢Ç§ÅÅ@:Ç¶Ç®Å@ÉÅ^' 
-	eq join(':', jsplit('\p{IsSpace}+', 'Ç†  Ç¢Ç§ÅÅ@Å@Ç¶Ç®Å@ÉÅ^', 3))
+	eq join(':', jsplit('\pS+', 'Ç†  Ç¢Ç§ÅÅ@Å@Ç¶Ç®Å@ÉÅ^', 3))
    && join('-;-', jsplit('\|', 'ì™Ç…É|É}Å[ÉhÅGÉLÉÉ|É|É|Éç||Éì ÉAÉ|Éç'))
 	eq 'ì™Ç…É|É}Å[ÉhÅGÉLÉÉ-;-É|É|Éç-;--;-Éì ÉAÉ|Éç'
    && join('-', jsplit('É|+', 'ì™Ç…É|É}Å[ÉhÅGÉLÉÉ|É|É|ÉçÉì ÉAÉ|Éç', 3))
@@ -193,3 +192,10 @@ print $] < 5.005 ||
       eq replace('0123000123', '0*', 'Z', 'g')
  )
    ? "ok" : "not ok", " 10\n";
+
+print match('Ç†Ç¢ÇOÇPÇQÇR', '\A\pH{2}\pD*\z')
+   && match('Ç†Ç¢ÇOÇPÇQÇR', '\A\ph{2}\pd*\z')
+   && match('Ç†Ç¢ÇOÇPÇQÇR', '\A\p{hiragana}{2}\p{digit}{4}\z')
+   && match('Ç†Ç¢ÇOÇPÇQÇR', '\A\p{IsHiragana}{2}\p{IsDigit}{4}\z')
+   && match('Ç†Ç¢ÇOÇPÇQÇR', '\A\p{InHiragana}{2}\p{InDigit}{4}\z')
+   ? "ok" : "not ok", " 11\n";

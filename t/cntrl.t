@@ -3,9 +3,9 @@
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..3\n"; }
+BEGIN { $| = 1; print "1..4\n"; }
 END {print "not ok 1\n" unless $loaded;}
-use ShiftJIS::Regexp qw(:re);
+use ShiftJIS::Regexp qw(:re replace);
 $loaded = 1;
 print "ok 1\n";
 
@@ -49,3 +49,16 @@ print "ok 1\n";
   print !$ng ? "ok" : "not ok", " 3\n";
 }
 
+sub add_comma {
+    my $str = shift;
+    1 while replace(\$str, '(\pD)(\pD{3})(?!\pD)', '$1ÅC$2');
+    return $str;
+}
+
+print 1
+ && add_comma('ã‡ÇOâ~') eq 'ã‡ÇOâ~'
+ && add_comma('ã‡ÇUÇVÇWâ~') eq 'ã‡ÇUÇVÇWâ~'
+ && add_comma('ã‡ÇPÇTÇRÇOÇOÇOÇOâ~') eq 'ã‡ÇPÅCÇTÇRÇOÅCÇOÇOÇOâ~'
+ && add_comma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWâ~') eq 'ã‡ÇPÇQÅCÇRÇSÇTÅCÇUÇVÇWâ~'
+ && add_comma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWÇXÇOâ~') eq 'ã‡ÇPÅCÇQÇRÇSÅCÇTÇUÇVÅCÇWÇXÇOâ~'
+  ? "ok" : "not ok", " 4\n";
