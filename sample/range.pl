@@ -1,4 +1,4 @@
-# This is not any test. 
+# There is no test. 
 
 use ShiftJIS::Regexp qw(:all);
 

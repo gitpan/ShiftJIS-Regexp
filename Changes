@@ -1,5 +1,8 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.14  Sun Jul 22 22:07:58 2001
+    - change test.t ([:print:] is not tested).
+
 0.13  Sat Jul 07 00:55:24 2001
     - add [=cc=] character classes.
 

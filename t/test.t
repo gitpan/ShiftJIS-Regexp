@@ -89,6 +89,7 @@ print "!””--”””00" eq replace($str, '\p{Hiragana}', '\x{8194}', 'g')
    && '‚Œ' eq (match("‚o‚…‚’‚Œ\n", '(\J)\Z'))[0]
    && "\n" eq (match("‚o‚…‚’‚Œ\n", '(\j)\z'))[0]
    && '‚Œ' eq (match("‚o‚…‚’‚Œ",   '(\j)\z'))[0]
+   && 'ƒ`' eq (match("ƒ}ƒbƒ`",   '(\j)\z'))[0]
    && '‚©‚¢' eq (match('‚½‚©‚¢@‚©‚¢‚ë‚¤', '(\P{Space}+)\p{Space}*\1'))[0]
    && 'EE' eq replace('EE', 'E', 'E', 'g')
    && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
@@ -130,15 +131,14 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
     $str =~ s/$re/¶/g;
     $ng++ if $sjs ne $str;
   }
-  if($] >= 5.006) {
+  if($] >= 5.006) { # [[:print:]] is gone out.
     for $re(qw/ [[:upper:]] [[:lower:]] [[:digit:]] [[:alpha:]] [[:alnum:]]
- \C [[:punct:]] [[:graph:]] [[:print:]] [[:space:]] [[:cntrl:]] [[:ascii:]]/
+             \C [[:punct:]] [[:graph:]] [[:space:]] [[:cntrl:]] [[:ascii:]]/
     ){
       my $str = $asc;
-      my $sjs = replace($str, $re, qw/¶ g/);
+      my $sjs = replace($str, $re, '¶', 'g');
       $str =~ s/$re/¶/g;
-      $ng++ if $sjs ne $str;
-      print $re,"\n" if $sjs ne $str;
+      $ng++, print "$re\n" if $sjs ne $str;
     }
   }
   print !$ng ? "ok 7\n" : "not ok 7\n";
@@ -178,4 +178,6 @@ print 1
     replace('‚©‚ª‚è‚Ñ-¶Ù¶ŞÓ-ƒJƒ“ƒKƒ‹[', '[[=‚©=]]', '#', 'g')
   &&  match('“ú–{', '[[=“ú=]][[=–{=]]')
   &&  match('P‚…r‚k', '^[[=p=]][[=‚d=]][[=‚’=]][[=L=]]$')
+  &&  match('[a]', '^[[=[=]][[=\x41=]][[=]=]]$')
+  &&  match('-m‚`n', '.[[=[=]][[=\x61=]][[=]=]]$')
    ? "ok 9\n" : "not ok 9\n";

@@ -9,7 +9,7 @@ require Exporter;
 use vars qw(%Eq);
 use ShiftJIS::Regexp::Equiv qw(%Eq);
 
-$VERSION = '0.13';
+$VERSION = '0.14';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 @ISA = qw(Exporter);
@@ -195,36 +195,36 @@ my %Re = (
 		. '\x84[\x40-\x7E\x80-\x9E\xBF-\xFC])',
 );
 
-my %Class = (
-  digit => 'IsDigit',
-  upper => 'IsUpper',
-  lower => 'IsLower',
-  alpha => 'IsAlpha',
-  alnum => 'IsAlnum',
-  punct => 'IsPunct',
-  space => 'IsSpace',
-  graph => 'IsGraph',
-  print => 'IsPrint',
-  cntrl => 'IsCntrl',
-  ascii => 'IsAscii',
-  word  => 'IsWord',
- boxdrawing => 'InBoxDrawing',
-  latin     => 'InLatin',
-  fulllatin => 'InFullLatin',
-  greek     => 'InGreek',
-  cyrillic  => 'InCyrillic',
-  hankaku   => 'IsHankaku',
-  zenkaku   => 'IsZenkaku',
-  x0201     => 'IsX0201',
-  x0208     => 'IsX0208',
-  kanji     => 'InKanji',
-  kanji1    => 'InKanji1',
-  kanji2    => 'InKanji2',
-  halfkana  => 'InHalfKana',
-  hiragana  => 'InHiragana',
-  katakana  => 'InKatakana',
-  fullkana  => 'InFullKana',
-  kana      => 'InKana',
+my %Class = qw(
+  digit IsDigit
+  upper IsUpper
+  lower IsLower
+  alpha IsAlpha
+  alnum IsAlnum
+  punct IsPunct
+  space IsSpace
+  graph IsGraph
+  print IsPrint
+  cntrl IsCntrl
+  ascii IsAscii
+  word  IsWord
+  boxdrawing InBoxDrawing
+  latin     InLatin
+  fulllatin InFullLatin
+  greek     InGreek
+  cyrillic  InCyrillic
+  hankaku   IsHankaku
+  zenkaku   IsZenkaku
+  x0201     IsX0201
+  x0208     IsX0208
+  kanji     InKanji
+  kanji1    InKanji1
+  kanji2    InKanji2
+  halfkana  InHalfKana
+  hiragana  InHiragana
+  katakana  InKatakana
+  fullkana  InFullKana
+  kana      InKana
 );
 
 my(%Cache);
@@ -333,7 +333,7 @@ sub re {
         }
         next;
       }
-      if(s/^\\([0-7][0-7][0-7])//){
+      if(s/^\\([0-7][0-7][0-7]?)//){
         $res .= rechar(chr oct $1, $mod);
         next;
       }
@@ -447,6 +447,10 @@ sub dst {
       }
       if(s/^\\([0-7][0-7][0-7])//){
         $res .= "\\$1";
+        next;
+      }
+      if(s/^\\([0-7][0-7])//){
+        $res .= "\\0$1";
         next;
       }
       if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
@@ -860,7 +864,7 @@ __END__
 
 =head1 NAME
 
-ShiftJIS::Regexp - Perl module to use Shift_JIS-oriented regexps in the byte-oriented perl
+ShiftJIS::Regexp - Shift_JIS-oriented regexps in the byte-oriented perl
 
 =head1 SYNOPSIS
 
@@ -1183,12 +1187,14 @@ e.g. C<re('[\xA0-\xFF]')>, is croaked.
 Character classes that match non-Shift_JIS substring
 are not supported (use C<\C> or alternation).
 
-=item Character Equivalents
+=item Character equivalents
 
 Since the version 0.13,
 the POSIX character equivalent classes C<[=cc=]> are supported.
 e.g. C<[[=‚ =]]> is identical to C<[‚Ÿƒ@§‚ ƒA±]>;
 C<[[=P=]]> to C<[pP‚‚o]>; C<[[=4=]]> to C<[4‚S]>.
+They are used in a character class, like C<[[=cc=]]>,
+C<[[=p=][=e=][=r=][=l=]]>.
 
 As C<cc> in C<[=cc=]>, any character literal or meta chatacter
 (C<\xhh>, C<\x{hhhh}>) that belongs to the character equivalents can be used.
@@ -1198,8 +1204,12 @@ have identical meanings.
 C<[[=‚©=]]> matches C<'‚©'>, C<'ƒJ'>, C<'¶'>, C<'‚ª'>, C<'ƒK'>, C<'¶Þ'>, C<'ƒ•'> (C<'¶Þ'> is a two-character string, but one collation element, 
 C<HALFWIDTH FORM FOR KATAKANA LETTER GA>.
 
-C<[[===]]> matches C<EQUALS SIGN> or C<FULLWIDTH EQUALS SIGN>;
-C<[[=[=]]> matches C<LEFT SQUARE BRACKET> or C<FULLWIDTH LEFT SQUARE BRACKET>;
+C<[[===]]> matches C<EQUALS SIGN> or 
+C<FULLWIDTH EQUALS SIGN>;
+C<[[=[=]]> matches C<LEFT SQUARE BRACKET> or 
+C<FULLWIDTH LEFT SQUARE BRACKET>;
+C<[[=]=]]> matches C<RIGHT SQUARE BRACKET> or 
+C<FULLWIDTH RIGHT SQUARE BRACKET>;
 C<[[=\=]]> matches C<YEN SIGN> or C<FULLWIDTH YEN SIGN>.
 
 =item Code embedded in regexp (Perl 5.005 or later)
