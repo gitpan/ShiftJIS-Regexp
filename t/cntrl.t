@@ -16,8 +16,8 @@ print "ok 1\n";
 {
   my($ng);
   my @c = map chr, 0..127;
-  my($re,$rg);
-  for my $n (0..127){
+  my($re,$rg,$n);
+  for $n (0..127){
     $re = '[\c' . chr($n) . ']';
     $rg = re($re);
     for(@c){

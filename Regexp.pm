@@ -6,17 +6,15 @@ use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
 require Exporter;
 
-require 5.005;
-
 @ISA = qw(Exporter);
 
-my @f = qw(issjis re match replace mkclass jsplit splitchar splitspace);
+my @f = qw(issjis re match replace mkclass jsplit splitchar splitspace rechar);
 
 @EXPORT      = ();
 @EXPORT_OK   = (@f);
 %EXPORT_TAGS = (all => \@f);
 
-$VERSION = '0.09';
+$VERSION = '0.10';
 
 my $Msg_unm = 'ShiftJIS::Regexp Unmatched [ character class';
 my $Msg_ilb = 'ShiftJIS::Regexp Illegal byte in class (following [)';
@@ -31,6 +29,8 @@ my $SBC = '[\x00-\x7F\xA1-\xDF]';
 my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
 my $Char = '(?:' . $SBC . '|' . $DBC . ')';
 
+my $Open = 5.005 > $] ? '(?:' : '(?-i:';
+
 my %Re = (
   '\C' => '[\x00-\xFF]',
   '\j' => $Char,
@@ -41,56 +41,56 @@ my %Re = (
   '\W' => '(?:[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.')',
   '\s' => '[\x09\x0A\x0C\x0D\x20]',
   '\S' => '(?:[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|' . $DBC . ')',
-  '\p{IsDigit}' => '(?-i:[\x30-\x39]|\x82[\x4F-\x58])',
-  '\P{IsDigit}' => '(?-i:[\x00-\x2F\x3A-\x7F\xA1-\xDF]|'
+  '\p{IsDigit}' => $Open.'[\x30-\x39]|\x82[\x4F-\x58])',
+  '\P{IsDigit}' => $Open.'[\x00-\x2F\x3A-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC]'
 		. '[\x40-\x7E\x80-\xFC]|\x82[\x40-\x4E\x59-\x7E\x80-\xFC])',
-  '\p{IsUpper}' => '(?-i:[\x41-\x5A]|\x82[\x60-\x79])',
-  '\P{IsUpper}' => '(?-i:[\x00-\x40\x5B-\x7F\xA1-\xDF]|'
+  '\p{IsUpper}' => $Open.'[\x41-\x5A]|\x82[\x60-\x79])',
+  '\P{IsUpper}' => $Open.'[\x00-\x40\x5B-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x5F\x7A-\x7E\x80-\xFC])',
-  '\p{IsLower}' => '(?-i:[\x61-\x7A]|\x82[\x81-\x9A])',
-  '\P{IsLower}' => '(?-i:[\x00-\x60\x7B-\x7F\xA1-\xDF]|'
+  '\p{IsLower}' => $Open.'[\x61-\x7A]|\x82[\x81-\x9A])',
+  '\P{IsLower}' => $Open.'[\x00-\x60\x7B-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80\x9B-\xFC])',
-  '\p{IsAlpha}' => '(?-i:[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A])',
-  '\P{IsAlpha}' => '(?-i:[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+  '\p{IsAlpha}' => $Open.'[\x41-\x5A\x61-\x7A]|\x82[\x60-\x79\x81-\x9A])',
+  '\P{IsAlpha}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{IsAlnum}' => '(?-i:[0-9A-Za-z]|\x82[\x4F-\x58\x60-\x79\x81-\x9A])',
+  '\p{IsAlnum}' => $Open.'[0-9A-Za-z]|\x82[\x4F-\x58\x60-\x79\x81-\x9A])',
 
-  '\P{IsAlnum}' => '(?-i:[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
+  '\P{IsAlnum}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{IsSpace}' => '(?-i:[\x09\x0A\x0C\x0D\x20]|\x81\x40)',
-  '\P{IsSpace}' => '(?-i:[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|'
+  '\p{IsSpace}' => $Open.'[\x09\x0A\x0C\x0D\x20]|\x81\x40)',
+  '\P{IsSpace}' => $Open.'[\x00-\x08\x0B\x0E-\x1F\x21-\x7F\xA1-\xDF]|'
 		. '\x81[\x41-\x7E\x80-\xFC]|'
 		. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{IsPunct}' => '(?-i:[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]|'
+  '\p{IsPunct}' => $Open.'[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E\xA1-\xA5]|'
 		. '\x81[\x41-\x49\x4C-\x51\x5C-\x7E\x80-\xAC\xB8-\xBF'
 		. '\xC8-\xCE\xDA-\xE8\xF0-\xF7\xFC]|\x84[\x9F-\xBE])',
-  '\P{IsPunct}' => '(?-i:[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]|'
+  '\P{IsPunct}' => $Open.'[\x00-\x20\x30-\x39\x41-\x5A\x61-\x7A\x7F\xA6-\xDF]|'
 		. '\x81[\x40\x4A\x4B\x52-\x5B\xAD-\xB7\xC0-\xC7\xCF-\xD9'
 		. '\xE9-\xEF\xF8-\xFB]|\x84[\x40-\x7E\x80-\x9E\xBF-\xFC]|'
 		. '[\x82\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{IsGraph}' => '(?-i:[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]|'
+  '\p{IsGraph}' => $Open.'[\x21-\x7E\xA1-\xDF]|\x81[\x41-\x7E\x80-\xFC]|'
 			. '[\x82-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\P{IsGraph}' => '(?-i:[\x00-\x20\x7F]|\x81\x40)',
-  '\p{IsPrint}' => '(?-i:[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' . $DBC . ')',
+  '\P{IsGraph}' => $Open.'[\x00-\x20\x7F]|\x81\x40)',
+  '\p{IsPrint}' => $Open.'[\x09\x0A\x0C\x0D\x20-\x7E\xA1-\xDF]|' . $DBC . ')',
   '\P{IsPrint}' => '[\x00-\x08\x0B\x0E-\x1F\x7F]',
   '\p{IsCntrl}' => '[\x00-\x1F]',
-  '\P{IsCntrl}' => '(?-i:[\x20-\x7F\xA1-\xDF]|' . $DBC . ')',
+  '\P{IsCntrl}' => $Open.'[\x20-\x7F\xA1-\xDF]|' . $DBC . ')',
   '\p{IsAscii}' => '[\x00-\x7F]',
-  '\P{IsAscii}' => '(?-i:[\xA1-\xDF]|' . $DBC . ')',
+  '\P{IsAscii}' => $Open.'[\xA1-\xDF]|' . $DBC . ')',
 
-  '\p{IsWord}'   => '(?-i:[0-9A-Z_a-z\xA6-\xDF]|\x81[\x4A\x4B\x52-\x5B]|'
+  '\p{IsWord}'   => $Open.'[0-9A-Z_a-z\xA6-\xDF]|\x81[\x4A\x4B\x52-\x5B]|'
 		. '\x82[\x4F-\x58\x60-\x79\x81-\x9A\x9F-\xF1]|'
 		. '\x83[\x40-\x7E\x80-\x96\x9F-\xB6\xBF-\xD6]|'
 		. '\x84[\x40-\x60\x70-\x7E\x80-\x91]|\x88[\x9F-\xFC]|'
 		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
 		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
 
-  '\P{IsWord}' => '(?-i:[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xA5]|'
+  '\P{IsWord}' => $Open.'[\x00-\x2F\x3A-\x40\x5B-\x5E\x60\x7B-\x7F\xA1-\xA5]|'
 		. '\x81[\x40-\x49\x4C-\x51\x5C-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x4E\x59-\x5F\x7A-\x7E\x80\x9B-\x9E\xF2-\xFC]|'
 		. '\x83[\x97-\x9E\xB7-\xBE\xD7-\xFC]|'
@@ -100,67 +100,67 @@ my %Re = (
 		. '\xEA[\xA5-\xFC])',
 
   '\p{IsHankaku}' => '[\xA1-\xDF]',
-  '\P{IsHankaku}' => '(?-i:[\x00-\x7F]|' . $DBC . ')',
-  '\p{IsZenkaku}' => '(?-i:' . $DBC . ')',
-  '\P{IsZenkaku}' => '(?-i:' . $SBC . ')',
+  '\P{IsHankaku}' => $Open.'[\x00-\x7F]|' . $DBC . ')',
+  '\p{IsZenkaku}' => $Open. $DBC . ')',
+  '\P{IsZenkaku}' => $Open. $SBC . ')',
 
-  '\p{InLatin}' => '(?-i:[\x41-\x5A\x61-\x7A])',
-  '\P{InLatin}' => '(?-i:[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|' . $DBC . ')',
-  '\p{InFullLatin}' => '(?-i:\x82[\x60-\x79\x81-\x9A])',
-  '\P{InFullLatin}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\p{InLatin}' => $Open.'[\x41-\x5A\x61-\x7A])',
+  '\P{InLatin}' => $Open.'[\x00-\x40\x5B-\x60\x7B-\x7F\xA1-\xDF]|'.$DBC.')',
+  '\p{InFullLatin}' => $Open.'\x82[\x60-\x79\x81-\x9A])',
+  '\P{InFullLatin}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x5F\x7A-\x7E\x80\x9B-\xFC])',
-  '\p{InGreek}' => '(?-i:\x83[\x9f-\xb6\xbf-\xd6])',
-  '\P{InGreek}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\p{InGreek}' => $Open.'\x83[\x9f-\xb6\xbf-\xd6])',
+  '\P{InGreek}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81\x82\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x83[\x40-\x7E\x80-\x9e\xb7-\xbe\xd7-\xFC])',
-  '\p{InCyrillic}' => '(?-i:\x84[\x40-\x60\x70-\x7E\x80-\x91])',
-  '\P{InCyrillic}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\p{InCyrillic}' => $Open.'\x84[\x40-\x60\x70-\x7E\x80-\x91])',
+  '\P{InCyrillic}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81-\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x84[\x61-\x6f\x92-\xFC])',
   '\p{InHalfKana}' => '[\xA6-\xDF]',
-  '\P{InHalfKana}' => '(?-i:[\x00-\x7F\xA1-\xA5]|' . $DBC . ')',
-  '\p{InHiragana}' => '(?-i:\x82[\x9F-\xF1]|\x81[\x4A\x4B\x54\x55])',
-  '\P{InHiragana}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\P{InHalfKana}' => $Open.'[\x00-\x7F\xA1-\xA5]|' . $DBC . ')',
+  '\p{InHiragana}' => $Open.'\x82[\x9F-\xF1]|\x81[\x4A\x4B\x54\x55])',
+  '\P{InHiragana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x83-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|'
 		. '\x81[\x40-\x49\x4C-\x53\x56-\x7E\x80-\xFC])',
-  '\p{InKatakana}' => '(?-i:\x83[\x40-\x7E\x80-\x96]|\x81[\x52\x53\x5B])',
-  '\P{InKatakana}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\p{InKatakana}' => $Open.'\x83[\x40-\x7E\x80-\x96]|\x81[\x52\x53\x5B])',
+  '\P{InKatakana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x82\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x83[\x97-\xFC]|'
 		. '\x81[\x40-\x51\x54-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InFullKana}' => '(?-i:\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
+  '\p{InFullKana}' => $Open.'\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
 		    . '\x81[\x4A\x4B\x5B\x52-\x55])',
-  '\P{InFullKana}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\P{InFullKana}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|\x83[\x97-\xFC]|'
 		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InKana}' => '(?-i:[\xA6-\xDF]|\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
+  '\p{InKana}' => $Open.'[\xA6-\xDF]|\x82[\x9F-\xF1]|\x83[\x40-\x7E\x80-\x96]|'
 		    . '\x81[\x4A\x4B\x5B\x52-\x55])',
-  '\P{InKana}' => '(?-i:[\x00-\x7F\xA1-\xA5]|'
+  '\P{InKana}' => $Open.'[\x00-\x7F\xA1-\xA5]|'
 		. '[\x84-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x82[\x40-\x7E\x80-\x9E\xF2-\xFC]|\x83[\x97-\xFC]|'
 		. '\x81[\x40-\x49\x4C-\x51\x56-\x5A\x5C-\x7E\x80-\xFC])',
-  '\p{InKanji1}'  => '(?-i:\x88[\x9F-\xFC]|\x98[\x40-\x72]|'
+  '\p{InKanji1}'  => $Open.'\x88[\x9F-\xFC]|\x98[\x40-\x72]|'
 		. '[\x89-\x97][\x40-\x7E\x80-\xFC])',
-  '\P{InKanji1}'  => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\P{InKanji1}'  => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\xFC]|'
 		. '[\x81-\x87\x99-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])',
-  '\p{InKanji2}'  => '(?-i:\x98[\x9F-\xFC]|[\x99-\x9F\xE0-\xE9]'
+  '\p{InKanji2}'  => $Open.'\x98[\x9F-\xFC]|[\x99-\x9F\xE0-\xE9]'
 		. '[\x40-\x7E\x80-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
-  '\P{InKanji2}'  => '(?-i:[\x00-\x7F\xA1-\xDF]|\x98[\x40-\x7E\x80-\x9E]|'
+  '\P{InKanji2}'  => $Open.'[\x00-\x7F\xA1-\xDF]|\x98[\x40-\x7E\x80-\x9E]|'
 		. '[\x81-\x97\xEB-\xFC][\x40-\x7E\x80-\xFC]|\xEA[\xA5-\xFC])',
-  '\p{InKanji}'   => '(?-i:\x81[\x56-\x5A]|\x88[\x9F-\xFC]|'
+  '\p{InKanji}'   => $Open.'\x81[\x56-\x5A]|\x88[\x9F-\xFC]|'
 		. '[\x89-\x97\x99-\x9F\xE0-\xE9][\x40-\x7E\x80-\xFC]|'
 		. '\x98[\x40-\x72\x9F-\xFC]|\xEA[\x40-\x7E\x80-\xA4])',
-  '\P{InKanji}'   => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\P{InKanji}'   => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '\x81[\x40-\x55\x5b-\x7E\x80-\xFC]|'
 		. '\x88[\x40-\x7E\x80-\x9E]|\x98[\x73-\x7E\x80-\x9E]|'
 		. '[\x82-\x87\xEB-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\xEA[\xA5-\xFC])',
-  '\p{InBoxDrawing}' => '(?-i:\x84[\x9F-\xBE])',
-  '\P{InBoxDrawing}' => '(?-i:[\x00-\x7F\xA1-\xDF]|'
+  '\p{InBoxDrawing}' => $Open.'\x84[\x9F-\xBE])',
+  '\P{InBoxDrawing}' => $Open.'[\x00-\x7F\xA1-\xDF]|'
 		. '[\x81-\x83\x85-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]|'
 		. '\x84[\x40-\x7E\x80-\x9E\xBF-\xFC])',
 );
@@ -199,15 +199,14 @@ sub issjis { $_[0] =~ /^$Char*$/ ? 1 : '' }
 
 sub re {
   my($flag);
-  my $res = '';
   my $pat = shift;
   my $mod = shift || '';
-  my $i = $mod =~ /i/;
   my $s = $mod =~ /s/;
   my $m = $mod =~ /m/;
   my $x = $mod =~ /x/;
   my $h = $mod =~ /h/;
   my $b = $mod =~ /b/; #DEBUG
+  my $res = $m && $s ? '(?ms)' : $m ? '(?m)' : $s ? '(?s)' : '';
   return $pat if $mod =~ /n/;
   for($pat){
     while(length){
@@ -216,7 +215,7 @@ sub re {
         $res .= '{' if $b; #DEBUG
         my $count = 1;
         while($count && length){
-          if(s/^(\x5C[\0-\xFC])//){
+          if(s/^(\x5C[\x00-\xFC])//){
              $res .= $1;
              next;
           }
@@ -244,15 +243,14 @@ sub re {
         croak $Msg_cod;
       }
       if(s/^\x5B(\^?)(\x5D?
-	(?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\\c[\x5C\x5D]
-	|\x5C?[\x00-\x5B\x5E-\x7F\xA1-\xDF]|\x5C[\x5C\x5D]
-	|\x5C?[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]
+	(?:\[\:\x5e?[0-9A-Z_a-z]+\:\]|\x5Cc?[\x5C\x5D]
+	|\x5C?(?![\x5C\x5D])$Char
 	)*
-      )\x5D//x)
+      )\x5D//ox)
       {
         my($not,$cls) = ($1,$2);
         if($2 eq ''){ croak $Msg_unm }
-        my $class = mkclass($cls,$i);
+        my $class = mkclass($cls,$mod);
         $res .= $not ? "(?:(?!$class)$Char)" : $class;
         next;
       } elsif (s/^\[//){ croak $Msg_ilb }
@@ -261,30 +259,34 @@ sub re {
         $res .= '\\'.$1;
         next;
       }
-      if(s/^\\?\///){ # '/' should be backslashed.
-        $res .= '\\/';
+      if(s|^\\?(['"/])||){ # <'>, <">, </> should be backslashed.
+        $res .= '\\'.$1;
         next;
       }
       if($x && s/^\s+//){ # skip whitespace
         next;
       }
-      if(s/^\.//){
+      if(s/^\.//){ # dot
         $res .= $s ? $Re{'\j'} : $Re{'\J'};
         next;
       }
-      if(s/^\^//){
-        $res .= $m ? '(?m:^)' : '^';
+      if(s/^\^//){ # begin
+        $res .= '(?:^)';
         next;
       }
-      if(s/^\$//){
-        $res .= $m ? '(?m:$)' : $s ? '(?s:$)' : '(?:$)';
+      if(s/^\$//){ # end
+        $res .= '(?:$)';
         next;
       }
-      if(s/^\\([dDwWsSCjJ])//){
+      if(s/^\\z//){ # \z
+        $res .= '(?!\n)\Z';
+        next;
+      }
+      if(s/^\\([dDwWsSCjJ])//){ # class
         $res .= $Re{'\\'. $1};
         next;
       }
-      if(s/^\\([pP])\{([0-9A-Z_a-z]+)\}//){
+      if(s/^\\([pP])\{([0-9A-Z_a-z]+)\}//){ # prop
         my($p, $key) = ($1,$2);
         if(defined $Re{ "\\$p\{$key\}"}){
           $res .= $Re{ "\\$p\{$key\}" }
@@ -298,7 +300,7 @@ sub re {
         next;
       }
       if(s/^\\([0-7][0-7][0-7])//){
-        $res .= $i ? "(?i:\\$1)" : "\\$1";
+        $res .= rechar(chr oct $1, $mod);
         next;
       }
       if(s/^\\0//){
@@ -306,54 +308,86 @@ sub re {
         next;
       }
       if(s/^\\c([\x00-\x7F])//){
-        my $c = sprintf '\\x%02x', ord(uc $1) ^ 64;
-        $res .= $i ? "(?i:$c)" : $c;
+        $res = rechar(chr(ord(uc $1) ^ 64), $mod);
         next;
       }
       if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
-        $res .= $i ? "(?i:\\x$1)" : "\\x$1";
+        $res .= rechar(chr hex $1, $mod);
         next;
       }
       if(s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
-        $res .= '(?-i:\\x' . $1 . '\\x' . $2 . ')';
+        $res .= rechar(chr(hex $1).chr(hex $2), $mod);
         next;
       }
       if(s/^\\([A-Za-z])//){
         $res .= '\\'. $1;
         next;
       }
-      if(s/^(\(\?[a-z-\s]+)//){
+      if(s/^(\(\?[a-z\-\s]+)//){
         $res .= $1;
-        next;
-      }
-      if(s/^([a-zA-Z]+)//){
-        $res .= $i ? "(?i:$1)" : $1;
         next;
       }
       if(s/^\\([1-9])//){
         $res .= $h ? '\\'. ($1+1) : '\\'. $1;
         next;
       }
-      if(s/^([\x21-\x5B\x5D-\x7E])//){
+      if(s/^([\x21-\x40\x5B\x5D-\x60\x7B-\x7E])//){
         $res .= $1;
-        next;
-      }
-      if(s/^\\?([\x81-\x9F\xE0-\xFC])([\x40-\x7E\x80-\xFC])//){
-        $res .= sprintf '(?-i:\\x%02x\\x%02x)', ord($1), ord($2);
         next;
       }
       if($_ eq '\\'){
         croak $Msg_bsl;
         next;
       }
-      if(s/^\\?([\x00-\x7F\xA1-\xDF])//){
-        $res .= sprintf '\\x%02x', ord($1);
+      if(s/^\\?($Char)//){
+        $res .= rechar($1, $mod);
         next;
       }
       croak sprintf $Msg_odd, ord;
     }
   }
   return $res;
+}
+
+sub rechar {
+  my $c   = shift;
+  my $mod = shift || '';
+  if(1 == length $c){
+    return $c =~ /^[A-Za-z]$/ && $mod =~ /i/
+	? "[\U$c\L$c]"
+	: sprintf('\\x%02x', ord $c);
+  }
+  my ($d) = ord substr($c,1,1); # the trail byte
+  return
+	   $c =~ /^\x82([\x60-\x79])$/ && $mod =~ /I/
+	? sprintf($Open.'\x82[\x%02x\x%02x])', $d, $d+33)
+	:  $c =~ /^\x82([\x81-\x9A])$/ && $mod =~ /I/
+	? sprintf($Open.'\x82[\x%02x\x%02x])', $d, $d-33)
+	:  $c =~ /^\x83([\x9F-\xB6])$/ && $mod =~ /I/
+	? sprintf($Open.'\x83[\x%02x\x%02x])', $d, $d+32)
+	:  $c =~ /^\x83([\xBF-\xD6])$/ && $mod =~ /I/
+	? sprintf($Open.'\x83[\x%02x\x%02x])', $d, $d-32)
+	:  $c =~ /^\x84([\x40-\x4E])$/ && $mod =~ /I/
+	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d+48)
+	:  $c =~ /^\x84([\x4F-\x60])$/ && $mod =~ /I/
+	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d+49)
+	:  $c =~ /^\x84([\x70-\x7E])$/ && $mod =~ /I/
+	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d-48)
+	:  $c =~ /^\x84([\x80-\x91])$/ && $mod =~ /I/
+	? sprintf($Open.'\x84[\x%02x\x%02x])', $d, $d-49)
+        :  $c =~ /^\x82([\x9F-\xDD])$/ && $mod =~ /j/
+	? sprintf($Open.'\x82\x%02x|\x83\x%02x)', $d, $d-0x5F)
+	:  $c =~ /^\x82([\xDE-\xF1])$/ && $mod =~ /j/
+	? sprintf($Open.'\x82\x%02x|\x83\x%02x)', $d, $d-0x5E)
+	:  $c =~ /^\x83([\x40-\x7E])$/ && $mod =~ /j/
+	? sprintf($Open.'\x83\x%02x|\x82\x%02x)', $d, $d+0x5F)
+	:  $c =~ /^\x83([\x80-\x93])$/ && $mod =~ /j/
+	? sprintf($Open.'\x83\x%02x|\x82\x%02x)', $d, $d+0x5E)
+	:  $c =~ /^\x81([\x52-\x53])$/ && $mod =~ /j/
+	? sprintf($Open.'\x81[\x%02x\x%02x])', $d, $d+2)
+	:  $c =~ /^\x81([\x54-\x55])$/ && $mod =~ /j/
+	? sprintf($Open.'\x81[\x%02x\x%02x])', $d, $d-2)
+	: sprintf($Open.'\x%02x\x%02x)', unpack 'C2', $c)
 }
 
 sub dst {
@@ -407,7 +441,6 @@ sub dst {
   return $res;
 }
 
-
 sub match {
   my $str = $_[0];
   my $mod = $_[2] || '';
@@ -445,7 +478,8 @@ sub replace {
 
 sub mkclass {
   my($tmp,@res);
-  my($pat,$ign) = @_;
+  my $pat = shift;
+  my $mod = shift || '';
   for($pat){
     while(length){
       if(s/^(\[\:\x5e?[0-9A-Z_a-z]+\:\])//){
@@ -453,7 +487,7 @@ sub mkclass {
         next;
       }
       if(s/^\\?\[// || s/^\\133// || s/^\\x5[bB]//){
-        $tmp .= '\\[';
+        $tmp .= '\\['; # prevent from confusion with [: :]
         next;
       }
       if(s/^\\\\//  || s/^\\134// || s/^\\x5[cC]//){
@@ -465,11 +499,11 @@ sub mkclass {
         next;
       }
       if(s/^\\([0-7][0-7][0-7])//){
-        $tmp .= chr oct $1;
+        $tmp .= chr(oct $1);
         next;
       }
       if(s/^\\x([0-9A-Fa-f][0-9A-Fa-f])//){
-        $tmp .= chr hex $1;
+        $tmp .= chr(hex $1);
         next;
       }
       if(s/^\\x\{([0-9A-Fa-f][0-9A-Fa-f])([0-9A-Fa-f][0-9A-Fa-f])\}//){
@@ -516,27 +550,21 @@ sub mkclass {
         next;
       }
       if(s/^
-	(\x5C[\x2D\x5B\x5C]|[\x00-\x5B\x5D-\x7F\xA1-\xDF]|
-	[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])
+	(\x5C[\x2D\x5B\x5C]|(?![\x5B\x5C])$Char)
 	\-
-	(\x5C[\x2D\x5B\x5C]|[\x00-\x5A\x5D-\x7F\xA1-\xDF]|
-	[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC])
-      //x)
+	(\x5C[\x2D\x5B\x5C]|(?![\x5B\x5C])$Char)
+      //xo)
       {
-        my($le,$tr) = ($1, $2);
-        push @res, __expand(__ord($le), __ord($tr), $ign);
+        my($le,$tr) = (__ord($1), __ord($2)); # lead trail
+        push @res, __expand($le,$tr,$mod);
         next;
       }
-      if(s/^([0-9A-Z_a-z]+)(?!\-)//){
-        push @res, $ign ? "(?i:[$1])" : "[$1]";
+      if(s/\x5C([\x2D\x5B\x5C])//){
+        push @res, rechar($1,$mod);
         next;
       }
-      if(s/^\\?([\x81-\x9F\xE0-\xFC])([\x40-\x7E\x80-\xFC])//){
-        push @res, sprintf '(?-i:\\x%02x\\x%02x)', ord($1), ord($2);
-        next;
-      }
-      if(s/^\\?([\x00-\x7F\xA1-\xDF])//){
-        push @res, sprintf '\\x%02x', ord($1);
+      if(s/^($Char)//o){
+        push @res, rechar($1,$mod);
         next;
       }
       croak sprintf $Msg_odd, ord;
@@ -551,23 +579,33 @@ sub __ord{
   length($c) > 1 ? unpack('n', $c) : ord($c);
 }
 
-sub __expand {
-  my($fr, $to, $ign) = @_;
+sub __chr{
+  my $c = shift;
+  0xFF < $c ? unpack('C*', pack 'n', $c) : chr($c);
+}
 
-  my($ini, $fin, $i, $ch, @retv, $rev);
+sub __expand {
+  my($fr, $to, $mod) = @_;
+  $mod ||= '';
+  my($ini, $fin, $i, $ch, @retv, @retd, $add);
+  my($ini_f, $fin_f, $ini_t, $fin_t, $ini_c, $fin_c);
+  my $trail = '[\x40-\x7e\x80-\xfc]';
 
   if($fr > $to){ croak sprintf $Msg_rev, $fr, $to }
   if($fr <= 0x7F){
     $ini = $fr < 0x00 ? 0x00 : $fr;
     $fin = $to > 0x7F ? 0x7F : $to;
     if($ini == $fin){
-      push @retv, sprintf(
-	$ign ? '(?i:\\x%02x)' : '\\x%02x', $ini);
+      push @retv, rechar(chr($ini),$mod);
     }
     elsif($ini < $fin){
-      push @retv, sprintf(
-	$ign ? '(?i:[\\x%02x-\\x%02x])' : '[\\x%02x-\\x%02x]', $ini, $fin
-      );
+      if($mod =~ /i/){
+         for($i=$ini;$i<=$fin;$i++){
+            $add .= lc(chr $i) if 0x41 <= $i && $i <= 0x5A;
+            $add .= uc(chr $i) if 0x61 <= $i && $i <= 0x7A;
+         }
+      }else{$add = ''}
+      push @retv, sprintf "[\\x%02x-\\x%02x$add]", $ini, $fin;
     }
   }
   if($fr <= 0xDF){
@@ -583,11 +621,11 @@ sub __expand {
   $ini = $fr < 0x8140 ? 0x8140 : $fr;
   $fin = $to > 0xFCFC ? 0xFCFC : $to;
   if($ini <= $fin){
-    my($ini_f,$ini_t) = unpack 'C*', pack 'n', $ini;
-    my($fin_f,$fin_t) = unpack 'C*', pack 'n', $fin;
+    ($ini_f,$ini_t) = __chr($ini);
+    ($fin_f,$fin_t) = __chr($fin);
 
     if($ini_f == $fin_f){
-      my $s =
+      push @retd,
 	$ini_t == $fin_t ?
 	  sprintf('\x%2x\x%2x', $ini_f, $ini_t) :
 	$fin_t <= 0x7E || 0x80 <= $ini_t ?
@@ -599,14 +637,13 @@ sub __expand {
 	$fin_t == 0x80 ?
 	  sprintf('\x%2x[\x%2x-\x7e\x80]', $ini_f, $ini_t) :
 	sprintf('\x%2x[\x%2x-\x7e\x80-\x%2x]',$ini_f, $ini_t, $fin_t);
-      push @retv, "(?-i:$s)";
     }
     else {
-      my $ini_c = $ini_t == 0x40 ? $ini_f : $ini_f == 0x9F ? 0xE0 : $ini_f+1;
-      my $fin_c = $fin_t == 0xFC ? $fin_f : $fin_f == 0xE0 ? 0x9F : $fin_f-1;
+      $ini_c = $ini_t == 0x40 ? $ini_f : $ini_f == 0x9F ? 0xE0 : $ini_f+1;
+      $fin_c = $fin_t == 0xFC ? $fin_f : $fin_f == 0xE0 ? 0x9F : $fin_f-1;
 
       if($ini_t != 0x40){
-        my $s =
+        push @retd,
 	  $ini_t == 0xFC ?
 	    sprintf('\x%2x\xfc', $ini_f) :
 	  0x80 <= $ini_t ?
@@ -614,13 +651,10 @@ sub __expand {
 	  $ini_t == 0x7E ?
 	    sprintf('\x%2x[\x7e\x80-\xfc]', $ini_f) :
 	    sprintf('\x%2x[\x%2x-\x7e\x80-\xfc]', $ini_f, $ini_t);
-        push @retv, "(?-i:$s)";
       }
-
-      my $trail = '[\x40-\x7e\x80-\xfc]';
       if($ini_c > $fin_c) { 1 }
       else {
-        my $s =
+        push @retd,
 	  $ini_c == $fin_c ?
 	    sprintf('\x%2x'.$trail, $ini_c) :
 	  $fin_c <= 0x9F || 0xE0 <= $ini_c ?
@@ -632,11 +666,9 @@ sub __expand {
 	  $fin_c == 0xE0 ?
 	    sprintf('[\x%2x-\x9f\xe0]'.$trail, $ini_c) :
 	  sprintf('[\x%2x-\x9f\xe0-\x%2x]'.$trail, $ini_c, $fin_c);
-        push @retv, "(?-i:$s)";
       }
-
       if($fin_t != 0xFC){
-        my $s =
+        push @retd,
 	  $fin_t == 0x40 ?
 	    sprintf('\x%2x\x40', $fin_f) :
 	  $fin_t <= 0x7E ?
@@ -644,11 +676,46 @@ sub __expand {
 	  $fin_t == 0x80 ?
 	    sprintf('\x%2x[\x40-\x7e\x80]', $fin_f) :
 	  sprintf('\x%2x[\x40-\x7e\x80-\x%2x]', $fin_f, $fin_t);
-        push @retv, "(?-i:$s)";
       }
     }
   }
-  return @retv;
+  if($mod =~ /I/){
+    for(
+      [0x8260, 0x8279, +33], # Full A to full Z
+      [0x8281, 0x829A, -33], # Full a to full z
+      [0x839F, 0x83B6, +32], # Greek Alpha to Omega
+      [0x83BF, 0x83D6, -32], # Greek alpha to omega
+      [0x8440, 0x844E, +48], # Cyrillic A to N
+      [0x8470, 0x847E, -48], # Cyrillic a to n
+      [0x844F, 0x8460, +49], # Cyrillic O to Ya
+      [0x8480, 0x8491, -49], # Cyrillic o to ya
+    ){
+      if($fr <= $_->[1] && $_->[0] <= $to){
+        ($ini_f,$ini_t) = __chr($fr <= $_->[0] ? $_->[0] : $fr);
+        ($fin_f,$fin_t) = __chr($_->[1] <= $to ? $_->[1] : $to);
+        push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
+		$ini_f, $ini_t + $_->[2], $fin_t + $_->[2]);
+      }
+    }
+  }
+  if($mod =~ /j/){
+    for(
+      [0x829F, 0x82DD, -0x5F, 0x83], # Hiragana Small A to Mi
+      [0x82DE, 0x82F1, -0x5E, 0x83], # Hiragana Mu to N
+      [0x8340, 0x837E, +0x5F, 0x82], # Katakana Small A to Mi
+      [0x8380, 0x8393, +0x5E, 0x82], # Katakana Mu to N
+      [0x8152, 0x8153, +2,    0x81], # Katakana Iteration Marks
+      [0x8154, 0x8155, -2,    0x81], # Hiragana Iteration Marks
+    ){
+      if($fr <= $_->[1] && $_->[0] <= $to){
+        ($ini_f,$ini_t) = __chr($fr <= $_->[0] ? $_->[0] : $fr);
+        ($fin_f,$fin_t) = __chr($_->[1] <= $to ? $_->[1] : $to);
+        push @retd, sprintf('\x%02x[\x%02x-\x%02x]',
+		$_->[3], $ini_t + $_->[2], $fin_t + $_->[2]);
+      }
+    }
+  }
+  return(@retv, @retd ? $Open.join('|',@retd).')' : ());
 }
 
 ############################################################################
@@ -782,10 +849,19 @@ PATTERN is specified as a string.
 MODIFIER is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
+     I  do case-insensitive pattern matching
+        (greek, cyrillic, fullwidth latin)
+     j  do hiragana-katakana-insensitive pattern matching
+
      s  treat string as single line
      m  treat string as multiple lines
      x  ignore whitespace (i.e. [ \n\r\t\f], but not comments!)
         unless backslashed or inside a character class
+
+C<re('^コンピューター?$')> matches C<'コンピューター'> or C<'コンピュータ'>.
+
+C<re('^らくだ$','j')> matches C<'らくだ'>, C<'ラクダ'>, C<'らクだ'>, etc.
+
 
 =item C<match(STRING, PATTERN)>
 
@@ -798,6 +874,10 @@ PATTERN is specified as a string.
 MODIFIER is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
+     I  do case-insensitive pattern matching
+        (greek, cyrillic, fullwidth latin)
+     j  do hiragana-katakana-insensitive pattern matching
+
      s  treat string as single line
      m  treat string as multiple lines
      x  ignore whitespace (i.e. [ \n\r\t\f], but not comments!)
@@ -825,6 +905,10 @@ returns the substituted string and the specified string is unaffected.
 MODIFIER is specified as a string.
 
      i  do case-insensitive pattern matching (only for ascii alphabets)
+     I  do case-insensitive pattern matching
+        (greek, cyrillic, fullwidth latin)
+     j  do hiragana-katakana-insensitive pattern matching
+
      s  treat string as single line  treat string as single line
      m  treat string as multiple lines
      x  ignore whitespace (i.e. [ \n\r\t\f], but not comments!)
@@ -879,6 +963,10 @@ and returns the array given by split of the supplied string into characters.
 
    .               match any character except \n
                    match any character with 's' modifier
+
+   \A              only at beginning of string
+   \Z              at end of string, or before newline at the end
+   \z              only at end of string (eq. '(?!\n)\Z')
 
    \C              match a single C char (octet), i.e. [\0-\xFF] in perl.
    \j              match any character, i.e. [\0-\x{FCFC}] in this module.
@@ -1000,7 +1088,7 @@ e.g. C<re('[\xA0-\xFF]')>, is croaked.
 Character classes that match non-Shift_JIS substring
 are not supported (use C<\C> or alternation).
 
-=item Code embedded in regexp
+=item Code embedded in regexp (Perl 5.005 or better)
 
 Parsing C<(?{ ... })> or C<(??{ ... })> assertions is carried out
 without any special care of double-byte characters.
@@ -1031,7 +1119,7 @@ Use them via C<re()> function inside your scope.
 
 =back
 
-=head1 CAVEAT
+=head1 CAVEATS
 
 A legal Shift_JIS character in this module
 must match the following regexp:
@@ -1043,26 +1131,26 @@ function, excepting you know it is surely encoded in Shift_JIS.
 If an illegal Shift_JIS string is specified,
 the result should be unexpectable.
 
-Some Shift_JIS double-byte character have one of [\x40-\x7E]
+Some Shift_JIS double-byte characters have one of C<[\x40-\x7E]>
 as the trail byte.
 
    @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
 
-Perl lexer doesn't take any care to these characters,
+The Perl lexer doesn't take any care to these characters,
 so they sometimes make trouble.
 e.g. the quoted literal C<"表"> causes fatal error,
-since its trail byte C<0x5C> escapes the closing quote.
+since its trail byte C<0x5C> backslashes the closing quote.
 
 Such a problem doesn't arise when the string is gotten from
 any external resource. 
-But writing the script containing the Shift_JIS
-double-byte character needs the greatest care.
+But writing the script containing Shift_JIS
+double-byte characters needs the greatest care.
 
-The use of single-quoted heredoc C<E<lt>E<lt> ''>
+The use of single-quoted heredoc, C<E<lt>E<lt> ''>,
 or C<\xhh> meta characters is recommended
 in order to define a Shift_JIS string literal.
 
-The safe ASCII-graphic characters, [\x21-\x3F], are:
+The safe ASCII-graphic characters, C<[\x21-\x3F]>, are:
 
    !"#$%&'()*+,-./0123456789:;<=>?
 
@@ -1073,7 +1161,24 @@ They are preferred as the delimiter of quote-like operators.
 The C<\U>, C<\L>, C<\Q>, C<\E>, and interpolation are not considered.
 If necessary, use them in C<""> (or C<qq//>) operators in the argument list.
 
-The word boundary \b, \B do not work correctly.
+The regexps of the word boundary, C<\b> and C<\B>, don't work correctly.
+
+Never pass any regexp containing C<'(?i)'> on perl below 5.005.
+Pass C<'i'> modifier as the second argument.
+(On Perl 5.005 or better, C<'(?i)'> is allowed 
+because C<'(?-i:RE)'> prevents it from wrong matching)
+
+e.g.
+
+  match('エ', '(?i)ト') returns true on Perl below 5.005 (Wrong).
+  match('エ', '(?i)ト') returns false on Perl 5.005 or better (Good).
+  match('エ', 'ト', 'i') returns false, ok.
+  # The trail byte of 'エ' is 'G' and that of 'ト' is 'g';
+
+The C<i>, C<I> and C<j> modifiers are invalid
+ to C<\p{}>, C<\P{}>, and POSIX C<[: :]>.
+ (e.g. C<\p{IsLower}>, C<[:lower:]>, etc).
+So use C<re('\p{IsAlpha}')> instead of C<re('\p{IsLower}', 'iI')>.
 
 The look-behind assertion like C<(?<=[A-Z])> is not prevented from matching
 trail byte of the previous double byte character:

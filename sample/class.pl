@@ -7,8 +7,8 @@ use ShiftJIS::String qw(mkrange);
 
 use ShiftJIS::Regexp qw(re match);
 
-my $n  = 1;
-my $NG = 0;
+my $n  = 0;
+my @NG;
 
 my %char = (
  n => [ "\n" ],
@@ -89,10 +89,10 @@ my %res = (
  '[a-z‚-‚š]'      =>[qw(0 0 0 0 0 0 0 0 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0)],
  '[^A-Z‚`-‚y]'     =>[qw(1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1)],
  '[^a-z‚-‚š]'     =>[qw(1 1 1 1 1 1 1 1 1 1 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1)],
- '(?i:[A-Z‚`-‚y])' =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0)],
- '(?i:[^A-Z‚`-‚y])'=>[qw(1 1 1 1 1 1 1 1 1 0 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1)],
- '(?i:[a-z‚-‚š])' =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0)],
- '(?i:[^a-z‚-‚š])'=>[qw(1 1 1 1 1 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1)],
+ '(?i)[A-Z‚`-‚y]'  =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0)],
+ '(?i)[^A-Z‚`-‚y]' =>[qw(1 1 1 1 1 1 1 1 1 0 0 1 0 1 1 1 1 1 1 1 1 1 1 1 1 1)],
+ '(?i)[a-z‚-‚š]'  =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0)],
+ '(?i)[^a-z‚-‚š]' =>[qw(1 1 1 1 1 1 1 1 1 0 0 1 1 0 1 1 1 1 1 1 1 1 1 1 1 1)],
  '\p{IsAlpha}'     =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0)],
  '[[:alpha:]]'     =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0)],
  '[^[:^alpha:]]'   =>[qw(0 0 0 0 0 0 0 0 0 1 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0)],
@@ -264,20 +264,28 @@ my %res = (
 '[^[:boxdrawing:]]'=>[qw(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1)],
 );
 
-for my $r (sort keys %res){
-  print $r, "\n";
-  my $re = re($r);
-  printf RE "%s\n    %s\n", $r, $re;
-  printf FH "%-24s", $r;
-  for my $cl (0..$#cls){
+#open RE, ">regexp.txt";
+my($mod,$OK,$r,$cl);
+for $r (sort keys %res){
+  print "$r\n";
+  my $rr = $r;
+  $mod = $rr =~ s/\(\?i\)// ? 'i' : '';
+  my $re = re($rr,$mod);
+# printf RE "%s\n    %s\n", $r, $re;  next;
+  for $cl (0..$#cls){
 
 #    my $a = match(join('', @{ $char{ $cls[ $cl ] } }), "^$r+\$");
 
     my $match = grep(match($_, "^$re\$", 'n'), @{ $char{ $cls[ $cl ] } });
     my $a = $match == @{ $char{ $cls[ $cl ] } } ? 1 : $match == 0 ? 0 : -1;
 
-    print $a == $res{ $r }[$cl] ? "ok" : ++$NG && "not ok", " ", ++$n, "\n";
+    my $msg = $a == $res{ $r }[$cl] ? "ok" : "not ok";
+    ++$n;
+    print "$msg $n\n";
+    push @NG, $n.$r." ".$cls[ $cl ]."\n" if $msg ne 'ok';
   }
 }
-print ! $NG ? "All tests successful.\n" : "Failed $NG tests.\n";
+print ! @NG
+	? "All tests successful.\n"
+	: "Failed ".scalar(@NG).", tests.\n", @NG;
 __END__

@@ -1,3 +1,5 @@
+# This is not any test. 
+
 use ShiftJIS::Regexp qw(:all);
 
 for(qw/

@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "1..8\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:all);
 $loaded = 1;
@@ -18,11 +18,21 @@ print !match("Perl", "perl")
    &&  match("PERL", '^(?i)perl$')
    &&  match("PErl", '^perl$', 'i')
    &&  match("PerluK", '^perluK$', 'i')
-   &&  match("PerluK", '^(?i:perluK)$')
    && !match("Perluk", '^perluK$', 'i')
+   &&
+ ( $] < 5.005 || 
+       match("PerluK", '^(?i:perluK)$')
    && !match("Perluk", '^(?i:perluK)$')
+ )
    &&  match("‰^“]–Æ‹–", "‰^“]")
    && !match("ƒ„ƒJƒ“", "ƒ|ƒbƒg")
+   && !match("ƒ„ƒJƒ“", "‚â[‚©]‚ñ")
+   &&  match("ƒ„ƒJƒ“", "‚â[‚©]‚ñ", 'j')
+   &&  match("‚ç‚­‚¾–{", "ƒ‰‚­‚¾", 'j')
+   &&  match("‚©U‚è‰Î", "ƒJS", 'j')
+   &&  match("‚±‚ê‚Í‚o‚…‚’‚Œ", "‚‚…‚’‚Œ", 'I')
+   &&  match("ƒ®ƒÃƒ¯ƒÉ", "ƒÎƒÃƒÏƒÉ", 'I')
+   &&  match('À•W•\¦', qw/\•\ /)
    && !match('@@ ==@', '@')
    &&  match('‚ ', '')
    &&  join('', match("‚ \n‚¢", '(^\j*)')) eq "‚ \n‚¢"
@@ -57,34 +67,39 @@ print  match('--\\--', '\\\\')
    &&  match('ƒAƒCƒEƒEƒE', '^ƒAƒCƒE{3}$', 'i')
    && !match('ƒAƒCCƒEƒEƒE', '^ƒAƒCcƒE{3}$')
    && !match('', '^ƒAƒCcƒE{3}$')
+   &&  match("aaa\x1Caaa", '[\c\]')
    &&  match('ƒAƒCCƒEƒEƒE', '^ƒAƒCcƒE{3}$', 'i')
    &&  match("‚ ‚¢‚¤09", '^\p{Hiragana}{3}\p{Digit}{2}$')
-   &&  match("‚ ‚¨‚P‚Q", '(?<=\p{InHiragana}{2})\p{IsDigit}{2}') 
+   &&
+ ( $] < 5.005 || match "‚ ‚¨‚P‚Q", '(?<=\p{InHiragana}{2})\p{IsDigit}{2}') 
     ? "ok 4\n" : "not ok 4\n";
 
 my $str = "!‚ ‚¢--‚¤‚¦‚¨00";
 
 print "!””--”””00" eq replace($str, '\p{Hiragana}', '\x{8194}', 'g')
    && "!”‚¢--‚¤‚¦‚¨00" eq replace($str, '\p{InHiragana}', '”')
-   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨00"
-	 eq replace($str,'(\p{InHiragana}+)', '${1}${1}')
    && "‚ \\0‚¢\\0‚ ‚¢" eq replace("‚ \0‚¢\0‚ ‚¢",'\0', '\\\\0', 'g')
-   && "‚ \n‚¢\n‚ ‚¢" eq replace("‚ \0‚¢\0‚ ‚¢",'\0', '\n', 'g')
    && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨‚¤‚¦‚¨00"
 	 eq replace($str,'(\p{InHiragana}+)', '${1}${1}', 'g')
+   && "!‚ ‚¢‚ ‚¢--‚¤‚¦‚¨00"
+	 eq replace($str,'(\p{InHiragana}+)', '${1}${1}')
    && "=ƒ}ƒ~=" eq replace('{ƒ}ƒ~}', '\{|\}', '=', 'g')
-   && "#\n#\n#a\n#bb\n#\n#cc\n#dd"
-	 eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
-   && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
-   && "a bDC123" eq replace("a b\n123", '$\j', "DC", 'm')
-   && '‚Œ' eq (match("‚o‚…‚’‚Œ", '(\J)\Z'))[0]
-   && '‚Œ' eq (match("‚o‚…‚’‚Œ", '(\j)\z'))[0]
+   && "‚ \n‚¢\n‚ ‚¢" eq replace("‚ \0‚¢\0‚ ‚¢",'\0', '\n', 'g')
+   && '‚Œ' eq (match("‚o‚…‚’‚Œ",   '(\J)\Z'))[0]
    && '‚Œ' eq (match("‚o‚…‚’‚Œ\n", '(\J)\Z'))[0]
    && "\n" eq (match("‚o‚…‚’‚Œ\n", '(\j)\z'))[0]
+   && '‚Œ' eq (match("‚o‚…‚’‚Œ",   '(\j)\z'))[0]
    && '‚©‚¢' eq (match('‚½‚©‚¢@‚©‚¢‚ë‚¤', '(\P{Space}+)\p{Space}*\1'))[0]
    && 'EE' eq replace('EE', 'E', 'E', 'g')
+   && "a bDC123" eq replace("a b\n123", '$ \j', "DC", 'mx')
+   && "a bDC123" eq replace("a b\n123", '$\j', "DC", 'm')
+   && 
+ ( $] < 5.005 || 
+      "#\n#\n#a\n#bb\n#\n#cc\n#dd"
+	 eq replace("\n\na\nbb\n\ncc\ndd", '^', '#', 'mg')
    && 'ZƒAƒCƒEƒGZƒAZƒAƒCƒEZƒA‹ƒA'
 	 eq  replace('ƒAƒCƒEƒGƒAƒAƒCƒEƒA‹ƒA', '(?=ƒA)', 'Z', 'gz')
+ )
     ? "ok 5\n" : "not ok 5\n";
 
 print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
@@ -100,12 +115,12 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
 
 {
   local $^W = 0;
-  my($asc,$ng);
+  my($asc,$ng,$re);
   $asc = "\0\x01\a\e\n\r\t\f"
 	. q( !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ)
 	. q([\]^_`abcdefghijklmnopqrstuvwxyz{|}~)."\x7F";
 
-  for my $re('[\d]', '[^\s]', '[^!2]', '[^#-&]',
+  for $re('[\d]', '[^\s]', '[^!2]', '[^#-&]',
 	'[^\/]', '[[-\\\\]', '[a-~]', '[\a-\e]',
 	'[\a-\b]', '[\a-\v]', '[!-@[-^`{-~]',
 	'[\C]', '[\j]', '[\J]',
@@ -115,9 +130,9 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
     $str =~ s/$re/¶/g;
     $ng++ if $sjs ne $str;
   }
-
   if($] >= 5.006) {
-    for my $re(qw/ [[:upper:]] [[:lower:]] [[:digit:]] [[:alpha:]] [[:alnum:]]      \C [[:punct:]] [[:graph:]] [[:print:]] [[:space:]] [[:cntrl:]] [[:ascii:]]/
+    for $re(qw/ [[:upper:]] [[:lower:]] [[:digit:]] [[:alpha:]] [[:alnum:]]
+ \C [[:punct:]] [[:graph:]] [[:print:]] [[:space:]] [[:cntrl:]] [[:ascii:]]/
     ){
       my $str = $asc;
       my $sjs = replace($str, $re, qw/¶ g/);
@@ -131,7 +146,10 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
 
 {
   my $str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789+-=";
-  print 1
+  my $zen = "‚`‚a‚b‚c‚d‚e‚f‚g‚h‚i‚‚‚‚ƒ‚„‚…‚†‚‡‚ˆ‚‰‚Š‚O‚P‚Q‚R‚S";
+  my $jpn = "‚ ‚¢‚¤‚¦‚¨‚©‚«‚­‚¯‚±ƒAƒCƒEƒGƒIƒJƒLƒNƒPƒR‚O‚P‚Q‚R‚S";
+  my $perl = "‚‚…‚’‚Œ‚o‚d‚q‚kperlPERL‚Ï‚ ‚éƒpƒAƒ‹";
+ print 1
    && "**CDEFGHIJKLMNO****TUVWXY***cdefghijklmno****tuvwxy*123456789+-="
        eq replace($str, '[abp-sz]', '*', 'ig')
    && "***DEFGHIJKLMNOPQRSTUVWXYZ***defghijklmnopqrstuvwxyz123456789+-="
@@ -146,25 +164,12 @@ print '‚ :‚¢‚¤:‚¦‚¨ƒ^' eq join(':', jsplit('^', '‚ ^‚¢‚¤^‚¦‚¨ƒ^'))
        eq replace($str, '[0-a]', '*', 'ig')
    && "****E******L***P*R************e******l***p*r********************"
        eq replace($str, '[^perl]', '*', 'ig')
+   && "‚ ‚¦‚¨‚«‚­‚¯‚±ƒAƒGƒIƒLƒNƒPƒR‚O‚P‚Q‚R‚S"
+       eq replace($jpn, '[‚¤‚©‚¢]', '', 'jg')
+   && "”‚…‚’””‚d‚q”p”rlP”RL‚Ï”‚éƒp”ƒ‹"
+       eq replace($perl, '[‚e‚ ‚k]', '”', 'iIjg')
+   && "”‚…‚’‚Œ‚o‚d‚q”p”rlP”RL‚Ï”‚éƒp”ƒ‹"
+       eq replace($perl, '[‚e‚ ‚k]', '”', 'ijg')
     ? "ok 8\n" : "not ok 8\n";
 }
 
-{
-  use re 'eval';
-
-  $::res = 0;
-  $_ = 'ƒ|' x 8;
-
-  my $regex = re(q/
-       \j*?
-       (?{ $cnt = 0 })
-       (
-         ƒ| (?{ local $cnt = $cnt + 1; })
-       )*  
-       ƒ|ƒ|ƒ|
-       (?{ $::res = $cnt })
-     /, 'x');
-
-  /$regex/;
-  print $::res == 5 ? "ok 9\n" : "not ok 9\n";
-}

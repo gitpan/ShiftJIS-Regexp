@@ -1,5 +1,8 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.10  Mon Jun 11 22:51:10 2001
+	- add I and j modifiers.
+
 0.09  Tue Jun  5 00:30:43 2001
 	- divide ./t and ./sample.
 

@@ -1,15 +1,43 @@
-ShiftJIS::Regexp
+A version 0.10
+==============
 
-This module requires perl version 5.005 or later.
+NAME
 
-This Perl provides some functions to use Shift_JIS-oriented regexps
-in the byte-oriented perl.
+ShiftJIS::Regexp - to use Shift_JIS-oriented regexps in the byte-oriented perl.
 
-To build the module, unpack this distribution somewhere, create
-the Makefile by running 'perl Makefile.PL' and do a 'make', 'make
-test', and if successful 'make install'.
+SYNOPSIS
 
-Copyright(c) 2001, SADAHIRO Tomoyuki. Japan. All rights reserved.
+  use ShiftJIS::Regexp qw(:all);
+  match('‚ ‚¨‚P‚Q', '\p{InHiragana}{2}\p{IsDigit}{2}');
+  match('‚ ‚¢‚¢‚¤‚¤‚¤', '^‚ ‚¢+‚¤{3}$');
+  replace($str, 'A', '‚`', 'g');
+
+DESCRIPTION
+
+This module provides some functions to use Shift_JIS-oriented
+regexps in the byte-oriented perl.
+
+  re() returns Shift_JIS-oriented regexps parsable by the byte-oriented perl.
+  match() works like m///.
+  replace() works like s///.
+  jsplit() works like CORE::split.
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+PREREQUISITES
+
+perl.
+
+COPYRIGHT AND LICENCE
+
+Copyright(C) 2001, SADAHIRO Tomoyuki. Japan. All rights reserved.
 
 This program is free software; you can redistribute it and/or 
 modify it under the same terms as Perl itself.
