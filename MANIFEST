@@ -7,7 +7,8 @@ Regexp/Equiv.pm
 t/test.t
 t/cntrl.t
 t/split.t
-sample/class.t
+sample/class1.t
 sample/class2.t
+sample/class3.t
 sample/posix.t
 sample/range.pl
