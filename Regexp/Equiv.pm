@@ -1,17 +1,19 @@
 package ShiftJIS::Regexp::Equiv;
-
 use strict;
 use Carp;
 
-use vars qw(@ISA @EXPORT @EXPORT_OK);
-use vars qw(%Eq);
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+$VERSION = '0.24';
 
 require Exporter;
 @ISA       = qw(Exporter);
 @EXPORT    = qw();
 @EXPORT_OK = qw(%Eq);
 
+use vars qw(%Eq);
+
 my $Open = 5.005 > $] ? '(?:' : '(?-i:';
+my $Close = ')';
 
 foreach(
 ['!', 'ÅI'],
@@ -135,14 +137,14 @@ foreach(
 [qw/ÇÒ Éì › /],
 [qw/ÅT ÅR ÅU ÅS /],
 [qw/ÅJ ÅK ﬁ  ﬂ  /],
-){
-  my @a = @$_;
-  my $re = $Open.join('|', map {
+) {
+    my $arr = $_;
+    my $re = $Open.join('|', map {
 	length($_) == 1
-	? sprintf('\x%02x', ord $_)
-	: sprintf('\x%02x\x%02x', unpack 'C2', $_)
-	} @a) .')';
-  @Eq{@a} = ($re) x @a;
+	    ? sprintf('\x%02x', ord $_)
+	    : sprintf('\x%02x\x%02x', unpack 'C2', $_)
+	} @$arr) .$Close;
+    @Eq{@$arr} = ($re) x @$arr;
 }
 
 1;

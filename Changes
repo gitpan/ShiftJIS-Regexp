@@ -1,5 +1,9 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.24  Sun Apr 14 19:29:08 2002
+    - Some tweaks in internals.
+    - A special regular expression \R{padG} is documented.
+
 0.23  Mon Dec 31 13:07:52 2001
     - When jsplit() gets undef as PATTERN,
       splits the string on whiltespace characters

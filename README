@@ -1,9 +1,9 @@
-ShiftJIS::Regexp: version 0.23
+ShiftJIS::Regexp: version 0.24
 ==============
 
 NAME
 
-ShiftJIS::Regexp - Shift_JIS-oriented regexps on the byte-oriented perl
+ShiftJIS::Regexp - Shift_JIS-oriented regular expressions on the byte-oriented perl
 
 SYNOPSIS
 
@@ -14,13 +14,13 @@ SYNOPSIS
 
 DESCRIPTION
 
-This module provides some functions for Shift_JIS-oriented regexps
+This module provides some functions for Shift_JIS-oriented regular expressions
 on the byte-oriented perl.
 
-  re() returns Shift_JIS-oriented regexps parsable by the byte-oriented perl.
-  match() works like m///.
-  replace() works like s///.
-  jsplit() works like CORE::split.
+  re() returns a Shift_JIS-oriented regular expression parsable by the byte-oriented perl.
+  match() works like m/// but is oriented to Shift_JIS.
+  replace() works like s/// but is oriented to Shift_JIS.
+  jsplit() works like CORE::split but is oriented to Shift_JIS.
 
 INSTALLATION
 

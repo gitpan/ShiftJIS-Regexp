@@ -3,9 +3,12 @@ Makefile.PL
 MANIFEST
 README
 Regexp.pm
+Regexp/Class.pm
+Regexp/Const.pm
 Regexp/Equiv.pm
 t/test.t
 t/cntrl.t
+t/long.t
 t/split.t
 sample/class1.t
 sample/class2.t
