@@ -1,0 +1,27 @@
+Revision history for Perl extension ShiftJIS::Regexp.
+
+0.01  Sat May 12 01:12:38 2001
+	- original version; created by h2xs 1.19
+
+0.02  Sat May 12 15:46:05 2001
+	- add jsplit(). bug fix.
+
+0.03  Sun May 13 12:28:51 2001
+	- change some character classes. bug fix.
+
+0.04  Sun May 13 15:38:15 2001
+	- bug fix. croak against illegal byte sequences.
+
+0.05  Mon May 14 00:21:58 2001
+	- add README. minor changes.
+
+0.06  Tue May 15 21:52:03 2001
+	- bug fix to prevent $ from interpolation in the regexp for replace().
+
+0.07  Wed May 23 23:39:41 2001
+	- add \p{IsWord} etc.
+	- bug fix in mkclass().
+	- bug fix about wrong matching of double-byte chars on ignore_case.
+
+0.08  Fri May 25 01:12:07 2001
+	- restricted support of (?{ ... }) assertions.

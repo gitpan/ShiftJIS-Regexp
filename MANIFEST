@@ -1,0 +1,10 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+Regexp.pm
+t/test.t
+t/cntrl.t
+t/split.t
+sample/class.pl
+sample/range.pl
