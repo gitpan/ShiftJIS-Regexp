@@ -1,5 +1,8 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+0.17  Sun Sep 16 00:59:12 2001
+    - internal: match and replace.
+
 0.16  Sat Sep 15 20:32:45 2001
     - \p{ }, \P{ } in character classes.
 

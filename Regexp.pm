@@ -4,7 +4,7 @@ use strict;
 use Carp;
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '0.16';
+$VERSION = '0.17';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 require Exporter;
@@ -40,11 +40,16 @@ my $DBC = '[\x81-\x9F\xE0-\xFC][\x40-\x7E\x80-\xFC]';
 
 my $Char = "(?:$SBC|$DBC)";
 
-my $Apad = '(?:\A|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
-my $Gpad = '(?:\G|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
-my $GApad = '(?:\G\A|'
-  . '\G(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')+?|'
-  . '[\x00-\x3F\x7F]+?(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?)';
+my $Apad  = '(?:\A|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
+my $Gpad  = '(?:\G|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
+my $GApad = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?|'
+          . '[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
+
+#my $Apad = '(?:\A|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
+#my $Gpad = '(?:\G|[\x00-\x3F\x7F]+?)(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?';
+#my $GApad = '(?:\G\A|'
+#  . '\G(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')+?|'
+#  . '[\x00-\x3F\x7F]+?(?:[\x40-\x7E\xA1-\xDF]|' . $DBC . ')*?)';
 
 my $Open = 5.005 > $] ? '(?:' : '(?-i:';
 
@@ -236,11 +241,12 @@ my %Class = qw(
 
 my(%Cache);
 
-sub re {
+sub re
+{
   my($flag);
   my $pat = shift;
   my $mod = shift || '';
-  if($pat =~ s/^(\^|\\[AG]|)\(\?([a-zA-Z]+)\)/$1/){
+  if($pat =~ s/^ (\^|\\[AG]|) \(\? ([a-zA-Z]+) \) /$1/x){
     $mod .= $2;
   }
   my $s = $mod =~ /s/;
@@ -391,7 +397,9 @@ sub re {
   return $mod =~ /o/ ? ($Cache{$pat}{$mod} = $res) : $res;
 }
 
-sub rechar {
+
+sub rechar
+{
   my $c   = shift;
   my $mod = shift || '';
   if(1 == length $c){
@@ -432,7 +440,9 @@ sub rechar {
 	: sprintf($Open.'\x%02x\x%02x)', unpack 'C2', $c)
 }
 
-sub dst {
+
+sub dst
+{
   my $res = '';
   my $dst = shift;
   for($dst){
@@ -487,42 +497,47 @@ sub dst {
   return $res;
 }
 
-sub match {
+sub match
+{
   my $str = $_[0];
   my $mod = $_[2] || '';
   my $pat = re($_[1], $mod);
   if($mod =~ /g/){
-    my $for = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
-    $str =~ /$for(?:$pat)/g;
+    my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
+    $str =~ /$fore(?:$pat)/g;
   } else {
     $str =~ /$Apad(?:$pat)/;
   }
 }
 
-sub replace {
+
+sub replace
+{
   my $str = $_[0];
   my $dst = dst($_[2]);
   my $mod = $_[3] || '';
   my $pat = re($_[1], 'h'.$mod);
   if($mod =~ /g/){
-   my $for = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
+    my $fore = $mod =~ /z/ || '' =~ /$pat/ ? $GApad : $Gpad;
     if(ref $str){
-      eval "\$\$str =~ s/($for)(?:$pat)/\${1}$dst/g";
+      eval "\$\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
     } else {
-      eval "\$str =~ s/($for)(?:$pat)/\${1}$dst/g";
+      eval   "\$str =~ s/($fore)(?:$pat)/\${1}$dst/g";
       $str;
     }
   } else {
     if(ref $str){
       eval "\$\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
     } else {
-      eval "\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
+      eval   "\$str =~ s/($Apad)(?:$pat)/\${1}$dst/";
       $str;
     }
   }
 }
 
-sub mkclass {
+
+sub mkclass
+{
   my($tmp,@res);
   my $pat = shift;
   my $mod = shift || '';
@@ -652,18 +667,21 @@ sub mkclass {
   return '(?:' . join('|', @res) . ')';
 }
 
-sub __ord {
+sub __ord
+{
   my $c = shift;
   $c =~ s/^\x5C//;
   length($c) > 1 ? unpack('n', $c) : ord($c);
 }
 
-sub __ord2{
+sub __ord2
+{
   my $c = shift;
   0xFF < $c ? unpack('C*', pack 'n', $c) : chr($c);
 }
 
-sub __expand {
+sub __expand
+{
   my($fr, $to, $mod) = @_;
   $mod ||= '';
   my($ini, $fin, $i, $ch, @retv, @retd, $add);
@@ -797,12 +815,12 @@ sub __expand {
   return(@retv, @retd ? $Open.join('|',@retd).')' : ());
 }
 
-############################################################################
+
 #
 # splitchar(STRING; LIMIT)
 # 
-############################################################################
-sub splitchar{
+sub splitchar
+{
   my($str, $lim, @ret);
   ($str, $lim) = @_;
   $lim = 0 if ! defined $lim;
@@ -821,15 +839,14 @@ sub splitchar{
   @ret;
 }
 
-sub _splitchar{ $_[0] =~ /$Char/go }
+sub _splitchar { $_[0] =~ /$Char/go }
 
 
-############################################################################
 #
 # jsplit(PATTERN, STRING; LIMIT)
-# 
-############################################################################
-sub jsplit{
+#
+sub jsplit
+{
   my($thing, $pat, $str, $lim, $cnt, @mat, @ret);
   $thing = shift;
   $pat = 'ARRAY' eq ref $thing ? re(@$thing) : re($thing);
@@ -859,7 +876,8 @@ sub jsplit{
   @ret;
 }
 
-sub splitspace{
+sub splitspace
+{
   my($str, $lim) = @_;
   defined $lim && 0 < $lim 
     ? do{
@@ -869,7 +887,8 @@ sub splitspace{
     : split(' ', spaceZ2H($str), $lim);
 }
 
-sub spaceZ2H {
+sub spaceZ2H
+{
   my $str = shift;
   my $len = CORE::length(ref $str ? $$str : $str);
   (ref $str ? $$str : $str) =~
@@ -877,7 +896,8 @@ sub spaceZ2H {
   ref $str ? abs($len - CORE::length $$str) : $str;
 };
 
-sub spaceH2Z {
+sub spaceH2Z
+{
   my $str = shift;
   my $len = CORE::length(ref $str ? $$str : $str);
   (ref $str ? $$str : $str) =~ s/ /\x81\x40/g;

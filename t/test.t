@@ -38,6 +38,7 @@ print !match("Perl", "perl")
    &&  match("ΠεΡλ", "περλ", 'I')
    &&  match("ΠεΡλ", "(?I)περλ", 'j')
    &&  match('座標表示', qw/\表 /)
+   && !match('Y座標', qw/\表 /)
    && !match('＝@＝@ ==@', '　')
    &&  match('あ', '')
    &&  join('', match("あ\nい", '(^\j*)')) eq "あ\nい"
