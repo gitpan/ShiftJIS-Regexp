@@ -8,7 +8,7 @@ require Exporter;
 
 require 5.005;
 
-@ISA = qw(Exporter AutoLoader);
+@ISA = qw(Exporter);
 
 my @f = qw(issjis re match replace mkclass jsplit splitchar splitspace);
 
@@ -16,7 +16,7 @@ my @f = qw(issjis re match replace mkclass jsplit splitchar splitspace);
 @EXPORT_OK   = (@f);
 %EXPORT_TAGS = (all => \@f);
 
-$VERSION = '0.08';
+$VERSION = '0.09';
 
 my $Msg_unm = 'ShiftJIS::Regexp Unmatched [ character class';
 my $Msg_ilb = 'ShiftJIS::Regexp Illegal byte in class (following [)';

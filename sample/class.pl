@@ -1,6 +1,14 @@
+#
+#  test of \p{ .. }, \P{ .. } etc.
+#
+#  this script uses ShiftJIS::String.pm
+#
 use ShiftJIS::String qw(mkrange);
 
 use ShiftJIS::Regexp qw(re match);
+
+my $n  = 1;
+my $NG = 0;
 
 my %char = (
  n => [ "\n" ],
@@ -256,9 +264,6 @@ my %res = (
 '[^[:boxdrawing:]]'=>[qw(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 1)],
 );
 
-open FH, ">result.txt";
-open RE, ">regexp.txt";
-
 for my $r (sort keys %res){
   print $r, "\n";
   my $re = re($r);
@@ -271,8 +276,8 @@ for my $r (sort keys %res){
     my $match = grep(match($_, "^$re\$", 'n'), @{ $char{ $cls[ $cl ] } });
     my $a = $match == @{ $char{ $cls[ $cl ] } } ? 1 : $match == 0 ? 0 : -1;
 
-    print FH $a == $res{ $r }[$cl] ? "o " : "not ";
+    print $a == $res{ $r }[$cl] ? "ok" : ++$NG && "not ok", " ", ++$n, "\n";
   }
-  print FH "\n";
 }
+print ! $NG ? "All tests successful.\n" : "Failed $NG tests.\n";
 __END__
