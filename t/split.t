@@ -1,15 +1,16 @@
-######################### We start with some black magic to print on failure.
+###############
 
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..14\n"; }
+BEGIN { $| = 1; print "1..18\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:split);
 $loaded = 1;
 print "ok 1\n";
 
-######################### End of black magic.
+###############
+
 my %table = (
  'Å@', ' ', 'Å^', '/', qw/
  ÇO 0 ÇP 1 ÇQ 2 ÇR 3 ÇS 4 ÇT 5 ÇU 6 ÇV 7 ÇW 8 ÇX 9
@@ -17,7 +18,7 @@ my %table = (
  Çm N Çn O Ço P Çp Q Çq R Çr S Çs T Çt U Çu V Çv W Çw X Çx Y Çy Z
  ÇÅ a ÇÇ b ÇÉ c ÇÑ d ÇÖ e ÇÜ f Çá g Çà h Çâ i Çä j Çã k Çå l Çç m
  Çé n Çè o Çê p Çë q Çí r Çì s Çî t Çï u Çñ v Çó w Çò x Çô y Çö z
- ÅÅ = Å{ + Å| - ÅH ? ÅI ! Åî /, '#', qw/ Åê $ Åì % Åï & Åó @ Åñ * 
+ ÅÅ = Å{ + Å| - ÅH ? ÅI ! Åî /, '#', qw/ Åê $ Åì % Åï & Åó @ Åñ *
  ÅÉ < ÅÑ > Åi ( Åj ) Åm [ Ån ] Åo { Åp } /,
 );
 
@@ -73,7 +74,7 @@ sub listtostr {
 
 # splitspace in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = join ':', split(' ', $str, $n);
     my $jspl = join ':', jsplit(undef,$zen,$n);
     my $spsp = join ':', splitspace($zen,$n);
@@ -83,7 +84,7 @@ sub listtostr {
 
 # split / / in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = join ':', split(/ /, $str, $n);
     my $jspl = join ':', jsplit(' ',$str,$n);
     ++$NG unless $core eq $jspl;
@@ -92,7 +93,7 @@ sub listtostr {
 
 # split /\\s+/ in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = join ':', split(/\s+/, $str, $n);
     my $jspl = join ':', jsplit('\p{IsSpace}+',$zen,$n);
     ++$NG unless $core eq printZ2H($jspl);
@@ -101,7 +102,7 @@ sub listtostr {
 
 # split /\s*,\s*/ in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = join ":", split /\s*,\s*/, " , abc, efg , hij, , , ", $n;
     my $jspl = join ":", jsplit('\s*,\s*', " , abc, efg , hij, , , ", $n);
     ++$NG unless $core eq $jspl;
@@ -121,7 +122,7 @@ print join('Å[', jsplit ['Ç†', 'j'], '01234Ç†Ç¢Ç§Ç¶Ç®ÉAÉCÉEÉGÉI')
 
 # splitchar in scalar context
   $NG = 0;
-  for $n (-1..20){
+  for $n (-1..20) {
     my $core = @{[ split(//, '', $n) ]};
     my $jspl = jsplit('','',$n);
     my $spch = splitchar('',$n);
@@ -131,7 +132,7 @@ print join('Å[', jsplit ['Ç†', 'j'], '01234Ç†Ç¢Ç§Ç¶Ç®ÉAÉCÉEÉGÉI')
 
 # splitchar in list context
   $NG = 0;
-  for $n (-1..20){
+  for $n (-1..20) {
     my $core = listtostr( split //, '', $n);
     my $jspl = listtostr( jsplit('','',$n));
     my $spch = listtostr( splitchar('',$n));
@@ -141,7 +142,7 @@ print join('Å[', jsplit ['Ç†', 'j'], '01234Ç†Ç¢Ç§Ç¶Ç®ÉAÉCÉEÉGÉI')
 
 # split(/ /, '') in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = listtostr( split(/ /, '', $n) );
     my $jspl = listtostr( jsplit(' ', '', $n) );
     ++$NG unless $core eq $jspl;
@@ -150,7 +151,7 @@ print join('Å[', jsplit ['Ç†', 'j'], '01234Ç†Ç¢Ç§Ç¶Ç®ÉAÉCÉEÉGÉI')
 
 # splitspace('') in list context
   $NG = 0;
-  for $n (-1..5){
+  for $n (-1..5) {
     my $core = listtostr( split(' ', '', $n) );
     my $jspl = listtostr( jsplit(undef, '', $n) );
     my $spsp = listtostr( splitspace('', $n) );
@@ -159,8 +160,17 @@ print join('Å[', jsplit ['Ç†', 'j'], '01234Ç†Ç¢Ç§Ç¶Ç®ÉAÉCÉEÉGÉI')
   print !$NG ? "ok" : "not ok", " 13\n";
 }
 
-print 1
-  && 'This/is/perl.' eq join('/', jsplit(undef, ' Å@ This  is Å@ perl.'))
-  && 'This/is/perl.' eq join('/', splitspace(' Å@ This  is Å@ perl.'))
-  && 'perl/-wc/mine.pl' eq join('/', splitspace('Å@perlÅ@-wcÅ@Å@mine.plÅ@'))
-  ? "ok" : "not ok", " 14\n";
+print 'This/is/perl.' eq join('/', jsplit(undef, ' Å@ This  is Å@ perl.'))
+    ? "ok" : "not ok", " 14\n";
+print 'This/is/perl.' eq join('/', splitspace(' Å@ This  is Å@ perl.'))
+    ? "ok" : "not ok", " 15\n";
+print 'perl/-wc/mine.pl' eq join('/', splitspace('Å@perlÅ@-wcÅ@Å@mine.plÅ@'))
+    ? "ok" : "not ok", " 16\n";
+print 'This/is/perl.' eq join('/', jsplit(undef,
+	" \x81\x40 This  is \x81\x40 perl."))
+    ? "ok" : "not ok", " 17\n";
+print 'This/is/perl.' eq join('/',
+	splitspace(" \x81\x40 This  is \x81\x40 perl."))
+    ? "ok" : "not ok", " 18\n";
+
+

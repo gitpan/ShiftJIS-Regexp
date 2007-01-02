@@ -1,4 +1,4 @@
-######################### We start with some black magic to print on failure.
+############
 
 use strict;
 use vars qw($loaded);
@@ -9,7 +9,7 @@ use ShiftJIS::Regexp qw(re);
 $loaded = 1;
 print "ok 1\n";
 
-######################### End of black magic.
+############
 
 my $long = "0123泣A" x 15000;
 $_ = "あいうえお".$long."アイウ". $long."エオ漢字シフ". $long."トＪＩＳ";

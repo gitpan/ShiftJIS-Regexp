@@ -1,9 +1,9 @@
-ShiftJIS::Regexp: version 0.26
+ShiftJIS::Regexp: version 1.00
 ==============
 
 NAME
 
-ShiftJIS::Regexp - Shift_JIS-oriented regular expressions on the byte-oriented perl
+ShiftJIS::Regexp - regular expressions in Shift-JIS
 
 SYNOPSIS
 
@@ -14,13 +14,13 @@ SYNOPSIS
 
 DESCRIPTION
 
-This module provides some functions for regular expressions
-which are oriented to Shift_JIS and can be used on the byte-oriented perl.
+This module provides some functions for Shift-JIS aware regular expressions
+which are aware of Shift-JIS and can be used on the byte-oriented perl.
 
-    re() returns a Shift_JIS-oriented regular expression.
-    match() works like m/// but is oriented to Shift_JIS.
-    replace() works like s/// but is oriented to Shift_JIS.
-    jsplit() works like CORE::split but is oriented to Shift_JIS.
+    re() returns a Shift-JIS aware regular expression.
+    match() works like m/// but is aware of Shift-JIS.
+    replace() works like s/// but is aware of Shift-JIS.
+    jsplit() works like CORE::split but is aware of Shift-JIS.
 
 INSTALLATION
 
@@ -33,11 +33,16 @@ To install this module type the following:
 
 PREREQUISITES
 
-    Perl 5.003 or later.
+   Perl 5.003 or later (Recommended: Perl 5.005 or later)
 
-COPYRIGHT AND LICENCE
+POD
 
-    Copyright(C) 2001, SADAHIRO Tomoyuki. Japan. All rights reserved.
+The document in Japanese for this module, named JAPANESE,
+is written in Shift-JIS.
 
-    This program is free software; you can redistribute it and/or
-    modify it under the same terms as Perl itself.
+COPYRIGHT AND LICENSE
+
+   Copyright(C) 2001-2007, SADAHIRO Tomoyuki. Japan. All rights reserved.
+
+   This module is free software; you can redistribute it
+   and/or modify it under the same terms as Perl itself.

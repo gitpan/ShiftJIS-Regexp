@@ -1,5 +1,10 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+1.00  Tue Jan  2 22:21:08 2007
+    - POD: revised, fixed and modied.
+    - added Japanese POD.
+    - added class.t and META.yml.
+
 0.26  Wed Apr 17 23:53:23 2002
     - I don't know why perl 5.005_02 on sun4-solaris fails in t/test.t,
       when C<my $str> (a file-scoped) precedes C<my $str> (in a block)...

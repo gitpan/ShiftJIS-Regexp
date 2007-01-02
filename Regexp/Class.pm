@@ -3,7 +3,7 @@ use strict;
 use Carp;
 
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION = '0.26';
+$VERSION = '1.00';
 
 require Exporter;
 @ISA       = qw(Exporter);
@@ -283,9 +283,9 @@ sub expand ($$;$)
 		  sprintf('\x%2x[\x%2x-\x7e\x80]', $ini_f, $ini_t) :
 		sprintf('\x%2x[\x%2x-\x7e\x80-\x%2x]',$ini_f, $ini_t, $fin_t);
 	} else {
-	    $ini_c = $ini_t == 0x40 ? $ini_f : 
+	    $ini_c = $ini_t == 0x40 ? $ini_f :
 		     $ini_f == 0x9F ? 0xE0 : $ini_f + 1;
-	    $fin_c = $fin_t == 0xFC ? $fin_f : 
+	    $fin_c = $fin_t == 0xFC ? $fin_f :
 		     $fin_f == 0xE0 ? 0x9F : $fin_f - 1;
 
 	    if ($ini_t != 0x40) {
@@ -469,8 +469,10 @@ sub parse_class ($;$) {
     foreach $r (@re) {
 	$r =~ s/^(?:$OpenRe)? \[ ($InClassRe+) \] \)? $/[$1]/xo;
 	$r =~ s/^(?:$OpenRe)? (\\x[0-9A-Fa-f]{2}) \)? $/[$1]/xo;
-	$r =~ s/^(?:$OpenRe)? (\\x[0-9A-Fa-f]{2}) \[ ($InClassRe+) \] \)? $/${1}[$2]/xo;
-	$r =~ s/^(?:$OpenRe)? (\\x[0-9A-Fa-f]{2}) (\\x[0-9A-Fa-f]{2}) \)? $/${1}[$2]/xo;
+	$r =~ s/^(?:$OpenRe)? (\\x[0-9A-Fa-f]{2})
+	    \[ ($InClassRe+) \] \)? $/${1}[$2]/xo;
+	$r =~ s/^(?:$OpenRe)? (\\x[0-9A-Fa-f]{2})
+	    (\\x[0-9A-Fa-f]{2}) \)? $/${1}[$2]/xo;
 
 	if ("$retv[-1]|$r" =~ /^ \[($InClassRe+)\] \| \[($InClassRe+)\] $/xo) {
 	    $retv[-1] = "[$1$2]";

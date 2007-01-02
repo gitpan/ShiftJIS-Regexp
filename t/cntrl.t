@@ -1,15 +1,15 @@
-######################### We start with some black magic to print on failure.
+###############
 
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..4\n"; }
+BEGIN { $| = 1; print "1..8\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(:re replace);
 $loaded = 1;
 print "ok 1\n";
 
-######################### End of black magic.
+###############
 {
   my($ng);
   my @c = map chr, 0..127;
@@ -49,16 +49,19 @@ print "ok 1\n";
   print !$ng ? "ok" : "not ok", " 3\n";
 }
 
-sub add_comma {
+sub addcomma {
     my $str = shift;
     1 while replace(\$str, '(\pD)(\pD{3})(?!\pD)', '$1ÅC$2');
     return $str;
 }
 
-print 1
- && add_comma('ã‡ÇOâ~') eq 'ã‡ÇOâ~'
- && add_comma('ã‡ÇUÇVÇWâ~') eq 'ã‡ÇUÇVÇWâ~'
- && add_comma('ã‡ÇPÇTÇRÇOÇOÇOÇOâ~') eq 'ã‡ÇPÅCÇTÇRÇOÅCÇOÇOÇOâ~'
- && add_comma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWâ~') eq 'ã‡ÇPÇQÅCÇRÇSÇTÅCÇUÇVÇWâ~'
- && add_comma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWÇXÇOâ~') eq 'ã‡ÇPÅCÇQÇRÇSÅCÇTÇUÇVÅCÇWÇXÇOâ~'
+print addcomma('ã‡ÇOâ~') eq 'ã‡ÇOâ~'
   ? "ok" : "not ok", " 4\n";
+print addcomma('ã‡ÇUÇVÇWâ~') eq 'ã‡ÇUÇVÇWâ~'
+  ? "ok" : "not ok", " 5\n";
+print addcomma('ã‡ÇPÇTÇRÇOÇOÇOÇOâ~') eq 'ã‡ÇPÅCÇTÇRÇOÅCÇOÇOÇOâ~'
+  ? "ok" : "not ok", " 6\n";
+print addcomma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWâ~') eq 'ã‡ÇPÇQÅCÇRÇSÇTÅCÇUÇVÇWâ~'
+  ? "ok" : "not ok", " 7\n";
+print addcomma('ã‡ÇPÇQÇRÇSÇTÇUÇVÇWÇXÇOâ~') eq 'ã‡ÇPÅCÇQÇRÇSÅCÇTÇUÇVÅCÇWÇXÇOâ~'
+  ? "ok" : "not ok", " 8\n";
