@@ -10,6 +10,7 @@ Regexp/Const.pm
 Regexp/Equiv.pm
 JAPANESE
 t/class.t
+t/class2.t
 t/cntrl.t
 t/long.t
 t/split.t

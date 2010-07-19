@@ -2,7 +2,7 @@
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; print "1..492\n"; }
+BEGIN { $| = 1; print "1..500\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use ShiftJIS::Regexp qw(re);
 
@@ -744,5 +744,13 @@ test_no('[^\x{8260}-\x{8279}]', $fw_upper);
 test_ok('[\x{8281}-\x{829A}]',  $fw_lower);
 test_no('[^\x{8281}-\x{829A}]', $fw_lower);
 
-__END__
+# 493-500
+test_ok('[\pJ\pV]',     $mswin);
+test_ok('[\pJ\pN\pI]',  $mswin);
+test_no('[^\pJ\pV]',    $mswin);
+test_no('[^\pJ\pN\pI]', $mswin);
+test_ok('[\p{JIS}\p{Vendor}]',     $mswin);
+test_ok('[\p{JIS}\p{NEC}\p{IBM}]', $mswin);
+test_no('[^\p{JIS}\p{Vendor}]',    $mswin);
+test_no('[^\p{JIS}\p{NEC}\p{IBM}]',$mswin);
 

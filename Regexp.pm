@@ -4,7 +4,7 @@ use Carp;
 
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '1.00';
+$VERSION = '1.01';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 use vars qw(%Err %Re $Char $PadA $PadG $PadGA);
@@ -49,7 +49,7 @@ sub re ($;$) {
 
     for ($tmppat) {
 	while (length) {
-	    if (s/^(\(\?[p?]?{)//) {
+	    if (s/^(\(\?[p?]?{)//) { # (?{}), (??{}) and (?p{})
 		$res .= $1;
 		my $count = 1;
 		while ($count && length) {

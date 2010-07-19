@@ -5,7 +5,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 use vars qw(%AbbrevProp %Re %Err $Char $Trail $PadA $PadG $PadGA);
 
-$VERSION = '1.00';
+$VERSION = '1.01';
 
 require Exporter;
 @ISA       = qw(Exporter);
@@ -24,15 +24,15 @@ $Char = "(?:$SBC|$DBC)";
 $Trail = '[\x40-\x7E\x80-\xFC]';
 
 $PadA  = '(?:\A|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
-$PadG  = '(?:\G|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
-$PadGA = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?|'
-	  .'[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
 
-my $R_PadG = 5.006 > $] ? $PadG
-	: '\G(?:|\C*?[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
-my $R_PadGA = 5.006 > $] ? $PadGA
-	: '\G(?:\A|(?:[\x81-\x9F\xE0-\xFC]{2})+?|'
-	  .'\C*?[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
+$PadG  = '\G(?:|[\x00-\xFF]*?'.
+	       '[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
+#$PadG = '(?:\G|[\x00-\x80\xA0-\xDF])(?:[\x81-\x9F\xE0-\xFC]{2})*?';
+
+#$PadGA = '(?:\G\A|\G(?:[\x81-\x9F\xE0-\xFC]{2})+?|'.
+#	 '[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
+$PadGA = '\G(?:\A|(?:[\x81-\x9F\xE0-\xFC]{2})+?|[\x00-\xFF]*?'.
+	 '[\x00-\x80\xA0-\xDF](?:[\x81-\x9F\xE0-\xFC]{2})*?)';
 
 %Err = (
     'Code'	=> $PACKAGE.' Sequence (?{...}) not terminated or not {}-balanced',
@@ -52,8 +52,8 @@ my $R_PadGA = 5.006 > $] ? $PadGA
 
 %Re = (
   '\R{pada}'  => $PadA,
-  '\R{padg}'  => $R_PadG,
-  '\R{padga}' => $R_PadGA,
+  '\R{padg}'  => $PadG,
+  '\R{padga}' => $PadGA,
 
   '\C' => '[\x00-\xFF]',
   '\j' => $Char,

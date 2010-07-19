@@ -1,5 +1,11 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+1.01  Mon Jul 19 21:10:38 2010
+    - POD: revised, fixed and modied.
+    - cntrl.t: tests avoid a new warning against \c` etc with perl 5.13.x.
+    - added class2.t.
+    - Const.pm: $PadG and $PadGA avoid \C.
+
 1.00  Tue Jan  2 22:21:08 2007
     - POD: revised, fixed and modied.
     - added Japanese POD.
