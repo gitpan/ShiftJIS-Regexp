@@ -4,7 +4,7 @@ use Carp;
 
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '1.01';
+$VERSION = '1.02';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 use vars qw(%Err %Re $Char $PadA $PadG $PadGA);

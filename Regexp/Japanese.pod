@@ -1,4 +1,8 @@
 
+=pod
+
+=encoding Shift_JIS
+
 =head1 名称
 
 ShiftJIS::Regexp - Shift-JISで書かれた正規表現
@@ -318,17 +322,20 @@ C<[[===]]> は、等号か全角等号とマッチします。C<[[=[=]]> は、
  ( \p{^Zenkaku}   \p^Z       [[:^zenkaku:]]    [\x00-\x7F\xA1-\xDF] )
 
    \p{X0201}                 [[:x0201:]]       [\x20-\x7F\xA1-\xDF]
-   \p{X0208}                 [[:x0208:]]       [\x{8140}-〓∈-∩∧-∃∠-∬Å-¶◯０-９Ａ-Ｚａ-ｚぁ-んァ-ヶΑ-Ωα-ωА-Яа-я─-╂亜-腕弌-熙]
+   \p{X0208}                 [[:x0208:]]       [\x{8140}-〓∈-∩∧-∃∠-∬Å-¶◯０-９Ａ-Ｚａ-ｚ
+                                                ぁ-んァ-ヶΑ-Ωα-ωА-Яа-я─-╂亜-腕弌-熙]
    \p{X0211}                 [[:x0211:]]       [\x00-\x1F]
    \p{JIS}        \pJ        [[:jis:]]         [\p{X0201}\p{X0208}\p{X0211}]
 
-   \p{NEC}        \pN        [[:nec:]]         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}\x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
+   \p{NEC}        \pN        [[:nec:]]         [\x{8740}-\x{875D}\x{875f}-\x{8775}\x{877E}-\x{879c}
+                                                \x{ed40}-\x{eeec}\x{eeef}-\x{eefc}]
    \p{IBM}        \pI        [[:ibm:]]         [\x{fa40}-\x{fc4b}]
    \p{Vendor}     \pV        [[:vendor:]]      [\p{NEC}\p{IBM}]
    \p{MSWin}      \pM        [[:mswin:]]       [\p{JIS}\p{Vendor}]
 
    \p{Halfwidth}             [[:halfwidth:]]   [!#$%&()*+,./0-9:;<=>?@A-Z\[\x5c\]^_`a-z{|}~]
-   \p{Fullwidth}  \pF        [[:fullwidth:]]   [！＃＄％＆（）＊＋，．／０-９：；＜＝＞？＠Ａ-Ｚ［￥］＾＿｀ａ-ｚ｛｜｝￣]
+   \p{Fullwidth}  \pF        [[:fullwidth:]]   [！＃＄％＆（）＊＋，．／０-９：；＜＝＞？＠
+                                                Ａ-Ｚ［￥］＾＿｀ａ-ｚ｛｜｝￣]
 
    \p{Latin}                 [[:latin:]]       [A-Za-z]
    \p{FullLatin}             [[:fulllatin:]]   [Ａ-Ｚａ-ｚ]
@@ -361,7 +368,8 @@ C<\p{Halfwidth}>は、引用符 (C<">), アポストロフィー (C<'>), ハイフンマイナス
 
 C<\p{NEC}> は、NEC特殊文字とNEC選定IBM拡張文字にマッチします。
 C<\p{IBM}> は、IBM拡張文字にマッチします。
-C<\p{Vendor}> は、マイクロソフト (Microsoft) CP932のベンダー定義文字にマッチします。つまり、C<[\p{NEC}\p{IBM}]> と等価です。
+C<\p{Vendor}> は、マイクロソフト (Microsoft) CP932のベンダー定義文字にマッチします。
+つまり、C<[\p{NEC}\p{IBM}]> と等価です。
 C<\p{MSWin}> は、マイクロソフト (Microsoft) CP932の文字にマッチします。
 
 =item *
