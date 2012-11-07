@@ -555,10 +555,10 @@ may cause failure to the emulation of C<CORE::split>.
 
 SADAHIRO Tomoyuki <SADAHIRO@cpan.org>
 
-  Copyright(C) 2001-2010, SADAHIRO Tomoyuki. Japan. All rights reserved.
+Copyright(C) 2001-2012, SADAHIRO Tomoyuki. Japan. All rights reserved.
 
-  This module is free software; you can redistribute it
-  and/or modify it under the same terms as Perl itself.
+This module is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 

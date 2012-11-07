@@ -1,7 +1,11 @@
 Revision history for Perl extension ShiftJIS::Regexp.
 
+1.03  Wed Nov  7 21:27:45 2012
+    - avoid "Unescaped left brace in regex is deprecated" from 5.17.x.
+
 1.02  Sat Aug  6 21:52:51 2011
     - fix the tarball with world writable files.
+    - rename JAPANESE to Regexp/Japanese.pod.
 
 1.01  Mon Jul 19 21:10:38 2010
     - POD: revised, fixed and modied.

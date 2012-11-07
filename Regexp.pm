@@ -4,7 +4,7 @@ use Carp;
 
 use vars qw($VERSION $PACKAGE @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 $PACKAGE = 'ShiftJIS::Regexp'; #__PACKAGE__
 
 use vars qw(%Err %Re $Char $PadA $PadG $PadGA);
@@ -49,7 +49,7 @@ sub re ($;$) {
 
     for ($tmppat) {
 	while (length) {
-	    if (s/^(\(\?[p?]?{)//) { # (?{}), (??{}) and (?p{})
+	    if (s/^(\(\?[p?]?\{)//) { # (?{}), (??{}) and (?p{})
 		$res .= $1;
 		my $count = 1;
 		while ($count && length) {
@@ -57,16 +57,16 @@ sub re ($;$) {
 			$res .= $1;
 			next;
 		    }
-		    if (s/^([^{}\\]+)//) {
+		    if (s/^([^\{\}\\]+)//) {
 			$res .= $1;
 			next;
 		    }
-		    if (s/^{//) {
+		    if (s/^\{//) {
 			++$count;
 			$res .= '{';
 			next;
 		    }
-		    if (s/^}//) {
+		    if (s/^\}//) {
 			--$count;
 			$res .= '}';
 			next;
@@ -87,7 +87,7 @@ sub re ($;$) {
 		next;
 	    }
 
-	    if (s/^\\([.*+?^$|\\()\[\]{}])//) { # backslashed meta chars
+	    if (s/^\\([.*+?^$|\\()\[\]\{\}])//) { # backslashed meta chars
 		$res .= '\\'.$1;
 		next;
 	    }
@@ -204,7 +204,7 @@ sub dst ($) {
 		$res .= '${' . ($1 + 1) . '}';
 		next;
 	    }
-	    if (s/^\${([1-8])}//) {
+	    if (s/^\$\{([1-8])\}//) {
 		$res .= '${' . ($1 + 1) . '}';
 		next;
 	    }

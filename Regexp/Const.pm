@@ -5,7 +5,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 use vars qw(%AbbrevProp %Re %Err $Char $Trail $PadA $PadG $PadGA);
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 require Exporter;
 @ISA       = qw(Exporter);
